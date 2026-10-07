@@ -1,0 +1,83 @@
+<Window x:Class="ClashMatrix.UI.ClashMatrixWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Clash Matrix" Height="620" Width="820"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        FontSize="12">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Current matrix path -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="Matrix:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+            <TextBox x:Name="PathText" IsReadOnly="True" VerticalContentAlignment="Center" Padding="4"/>
+        </DockPanel>
+
+        <!-- Summary + tolerance -->
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="SummaryText" Text="No matrix yet." FontWeight="SemiBold"
+                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                <TextBlock Text="Tolerance (mm):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox x:Name="ToleranceText" Width="56" Text="10" VerticalContentAlignment="Center" Padding="3"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Warnings: capped height + scrollable, so the buttons always stay visible -->
+        <TextBox x:Name="WarningsText" Grid.Row="2" IsReadOnly="True"
+                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                 MaxHeight="120" MinHeight="40" Margin="0,0,0,8" Padding="6"
+                 Foreground="#B00020" Background="#FFF5F5"
+                 BorderBrush="#F0C0C0" Visibility="Collapsed"/>
+
+        <!-- Test preview -->
+        <DataGrid x:Name="TestsGrid" Grid.Row="3" AutoGenerateColumns="False"
+                  IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False"
+                  GridLinesVisibility="Horizontal" BorderThickness="1" BorderBrush="#DDD">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Test name" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="Left" Binding="{Binding LeftName}" Width="180"/>
+                <DataGridTextColumn Header="Right" Binding="{Binding RightName}" Width="180"/>
+                <DataGridTextColumn Header="Tol (mm)" Binding="{Binding ToleranceMm}" Width="70"/>
+                <DataGridTextColumn Header="Prio" Binding="{Binding Priority}" Width="50"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Actions -->
+        <DockPanel Grid.Row="4" Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" Text="" VerticalAlignment="Center" Foreground="#555"
+                       TextWrapping="Wrap" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+            <Button x:Name="CloseButton" Content="Close" Padding="14,5" DockPanel.Dock="Right"
+                    Margin="8,0,0,0" IsCancel="True" Click="Close_Click"/>
+            <Button x:Name="MatrixButton" Content="Matrix ▾" Padding="14,5" DockPanel.Dock="Right"
+                    Click="MatrixButton_Click">
+                <Button.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Export Matrix…" Click="ExportMatrix_Click"/>
+                        <MenuItem Header="Update Matrix…" Click="UpdateMatrix_Click"/>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+            <Button x:Name="CreateTestsButton" Content="Create Clash Tests" Padding="14,5"
+                    DockPanel.Dock="Right" Margin="8,0,0,0" Click="CreateTests_Click"/>
+            <Button x:Name="UpdateSetsButton" Content="Update Search Sets" Padding="14,5"
+                    DockPanel.Dock="Right" Margin="8,0,0,0" Click="UpdateSets_Click"/>
+            <Button x:Name="CreateSetsButton" Content="Create Search Sets" Padding="14,5"
+                    DockPanel.Dock="Right" Click="CreateSets_Click"/>
+            <Button x:Name="XmlButton" Content="Generate XML…" Padding="14,5"
+                    DockPanel.Dock="Right" Click="GenerateXml_Click"/>
+        </DockPanel>
+    </Grid>
+</Window>

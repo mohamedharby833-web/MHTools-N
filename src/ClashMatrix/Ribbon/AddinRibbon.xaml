@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Navisworks ribbon definition. The NWRibbonButton Id must match the [Command] name in App.cs. -->
+<RibbonControl
+    x:Uid="ClashMatrix" xmlns="clr-namespace:Autodesk.Windows;assembly=AdWindows"
+    xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:adwi="clr-namespace:Autodesk.Internal.Windows;assembly=AdWindows"
+    xmlns:system="clr-namespace:System;assembly=mscorlib"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Autodesk.Navisworks.Gui.Roamer.AIRLook;assembly=navisworks.gui.roamer">
+
+    <RibbonTab Id="Clash Matrix" KeyTip="T1">
+        <RibbonPanel x:Uid="RibbonPanel1_1">
+            <RibbonPanelSource x:Uid="RibbonPanelSource_RibbonPanel_1" KeyTip="C1" Title="Clash Matrix">
+
+                <local:NWRibbonButton x:Uid="Clash Matrix Import" Id="ClashMatrix.Import"
+                            Size="Large"
+                            KeyTip="B1"
+                            ShowText="True"
+                            Text="Clash Matrix"
+                            Orientation="Vertical"
+                />
+
+            </RibbonPanelSource>
+        </RibbonPanel>
+    </RibbonTab>
+
+</RibbonControl>

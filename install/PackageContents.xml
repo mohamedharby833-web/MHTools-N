@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--
+  Autodesk Navisworks bundle manifest (per-user install, no admin rights).
+
+  Installed to:  %AppData%\Autodesk\ApplicationPlugins\ClashMatrix.bundle\
+
+  One Components block per Navisworks release. Navisworks matches SeriesMin /
+  SeriesMax against the release being started and loads only that ComponentEntry,
+  which is why several builds can sit in one bundle.
+
+  Navisworks release -> NwNN mapping (NN = year - 2003):
+    2024 -> Nw21  2025 -> Nw22  2026 -> Nw23  2027 -> Nw24
+-->
+<ApplicationPackage SchemaVersion="1.0"
+                    AutodeskProduct="Naviswork"
+                    ProductType="Application"
+                    FriendlyVersion="1.0.0"
+                    AppVersion="1.0.0"
+                    SupportedLocales="Enu"
+                    Name="Clash Matrix"
+                    Description="Generate Navisworks clash tests from an Excel clash matrix"
+                    Author="Mohamed Ali Harby">
+
+  <CompanyDetails Name="Mohamed Ali Harby" />
+
+  <Components Description="Navisworks 2024">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw21" SeriesMax="Nw21" />
+    <ComponentEntry AppName="Clash Matrix" AppType="ManagedPlugin" Version="1.0.0"
+                    ModuleName="./Contents/21/ClashMatrix.dll"
+                    AppDescription="Clash Matrix" />
+  </Components>
+
+  <Components Description="Navisworks 2025">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw22" SeriesMax="Nw22" />
+    <ComponentEntry AppName="Clash Matrix" AppType="ManagedPlugin" Version="1.0.0"
+                    ModuleName="./Contents/22/ClashMatrix.dll"
+                    AppDescription="Clash Matrix" />
+  </Components>
+
+  <Components Description="Navisworks 2026">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw23" SeriesMax="Nw23" />
+    <ComponentEntry AppName="Clash Matrix" AppType="ManagedPlugin" Version="1.0.0"
+                    ModuleName="./Contents/23/ClashMatrix.dll"
+                    AppDescription="Clash Matrix" />
+  </Components>
+
+  <Components Description="Navisworks 2027">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw24" SeriesMax="Nw24" />
+    <ComponentEntry AppName="Clash Matrix" AppType="ManagedPlugin" Version="1.0.0"
+                    ModuleName="./Contents/24/ClashMatrix.dll"
+                    AppDescription="Clash Matrix" />
+  </Components>
+
+</ApplicationPackage>
