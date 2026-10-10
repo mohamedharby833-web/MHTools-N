@@ -237,9 +237,25 @@ namespace ClashMatrix.UI
         /// <summary>The rows selected when a row's tick box was pressed - before the click can change the selection.</summary>
         private List<object> _selectionAtClick;
 
+        /// <summary>
+        /// The row whose tick box was pressed, and whether it was ticked - taken on the press,
+        /// as the click itself can rebuild the table under the tick box.
+        /// </summary>
+        private object _rowAtClick;
+        private bool _rowWasTicked;
+
         private void Grid_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             _selectionAtClick = ((DataGrid)sender).SelectedItems.Cast<object>().ToList();
+            _rowAtClick = null;
+            CheckBox box = null;
+            for (var d = e.OriginalSource as DependencyObject; d != null && !(d is DataGridRow); d = System.Windows.Media.VisualTreeHelper.GetParent(d))
+                if (d is CheckBox) box = (CheckBox)d;
+            if (box != null && (box.DataContext is SetRow || box.DataContext is TestRow))
+            {
+                _rowAtClick = box.DataContext;
+                _rowWasTicked = box.IsChecked == true;
+            }
         }
 
         // The header tick box: every row the search lets through.
@@ -269,15 +285,16 @@ namespace ClashMatrix.UI
         private void RowBoxClicked(DataGrid grid, CheckBox box, bool sets)
         {
             List<object> chosen = _selectionAtClick;
+            object row = _rowAtClick ?? box.DataContext;
+            bool value = _rowAtClick != null ? !_rowWasTicked : box.IsChecked == true;
             _selectionAtClick = null;
-            object row = box.DataContext;
+            _rowAtClick = null;
             if (chosen == null || chosen.Count < 2 || !chosen.Contains(row))
             {
                 UpdateHeaderBoxes();
                 return;
             }
 
-            bool value = box.IsChecked == true;
             Bulk(sets, () =>
             {
                 foreach (object o in chosen)
@@ -411,13 +428,13 @@ namespace ClashMatrix.UI
         private void SetsSearch_Changed(object sender, TextChangedEventArgs e)
         {
             SetsSearchHint.Visibility = SetsSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            ApplyFilters();
+            ApplyFilters(true, false);
         }
 
         private void TestsSearch_Changed(object sender, TextChangedEventArgs e)
         {
             TestsSearchHint.Visibility = TestsSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            ApplyFilters();
+            ApplyFilters(false, true);
         }
 
         /// <summary>
@@ -425,17 +442,26 @@ namespace ClashMatrix.UI
         /// box, as typed (any case): "AR WALLS" finds "AR WALLS - ST FLOORS" but not
         /// "AR CURTAIN WALLS".
         /// </summary>
-        private void ApplyFilters()
+        /// <remarks>
+        /// Only the table asked for: setting a filter rebuilds that table's rows, which loses
+        /// its selection and the row under a tick box being clicked.
+        /// </remarks>
+        private void ApplyFilters(bool setsTable, bool testsTable)
         {
-            if (_setRows == null || _testRows == null || SetsSearch == null || TestsSearch == null) return;
-            ICollectionView sets = CollectionViewSource.GetDefaultView(_setRows);
-            string setText = SetsSearch.Text.Trim();
-            sets.Filter = setText.Length == 0 ? (Predicate<object>)null
-                : o => { var r = (SetRow)o; return Matches(setText, r.Name, r.Discipline, r.Categories, r.FilesTip, r.Status); };
-            ICollectionView tests = CollectionViewSource.GetDefaultView(_testRows);
-            string testText = TestsSearch.Text.Trim();
-            tests.Filter = testText.Length == 0 ? (Predicate<object>)null
-                : o => { var r = (TestRow)o; return Matches(testText, r.Name, r.LeftName, r.RightName, r.Priority, r.Status); };
+            if (setsTable && _setRows != null && SetsSearch != null)
+            {
+                ICollectionView sets = CollectionViewSource.GetDefaultView(_setRows);
+                string setText = SetsSearch.Text.Trim();
+                sets.Filter = setText.Length == 0 ? (Predicate<object>)null
+                    : o => { var r = (SetRow)o; return Matches(setText, r.Name, r.Discipline, r.Categories, r.FilesTip, r.Status); };
+            }
+            if (testsTable && _testRows != null && TestsSearch != null)
+            {
+                ICollectionView tests = CollectionViewSource.GetDefaultView(_testRows);
+                string testText = TestsSearch.Text.Trim();
+                tests.Filter = testText.Length == 0 ? (Predicate<object>)null
+                    : o => { var r = (TestRow)o; return Matches(testText, r.Name, r.LeftName, r.RightName, r.Priority, r.Status); };
+            }
             UpdateHeaderBoxes();
         }
 
@@ -648,7 +674,7 @@ namespace ClashMatrix.UI
 
             _setRows = MatrixLayout.Order(result).Select(name => new SetRow(result, name) { Edited = SetEdited }).ToList();
             SetsGrid.ItemsSource = _setRows;
-            ApplyFilters();
+            ApplyFilters(true, false);
             BuildTestRows();
             RefreshStatuses();
             ShowWarnings(result.Warnings);
@@ -673,7 +699,7 @@ namespace ClashMatrix.UI
             };
             _testRows = _result.Tests.Select(t => new TestRow(_result, t, tolerance) { Edited = TestEdited }).ToList();
             TestsGrid.ItemsSource = _testRows;
-            ApplyFilters();
+            ApplyFilters(false, true);
         }
 
         /// <summary>The Status columns: what exists in the model already, what is new, renamed or left out.</summary>
