@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Generates src/ClashMatrix/Resources/ClashStandard.tsv, the built-in clash
+    standard (priority + tolerance per Revit category pair) that Scan Model applies
+    to the default clash tests. How to run it: see README.md next to this file.
+    A build-time tool only; nothing here ships with the add-in.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+</Project>

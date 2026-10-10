@@ -1,0 +1,64 @@
+<Window x:Class="ClashMatrix.UI.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:ClashMatrix.UI"
+        Title="About MHTools-N"
+        Width="480" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <!-- The same window as MH Tools' About. The look comes from MhTheme.Apply
+         (UI/MhTheme.cs, UI/Theme.xaml); this file only sets layout. -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:MhHeader x:Name="Header" Grid.Row="0" Title="MHTools-N" ShowProduct="False" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel Margin="20,16,20,16">
+
+            <TextBlock Style="{DynamicResource MhLeadText}" Text="Mohamed Ali Harby" />
+            <TextBlock Style="{DynamicResource MhMutedText}"
+                       Text="Sr. BIM Electrical Engineer / BIM MEP Coordinator" Margin="0,1,0,14" />
+
+            <Border Style="{DynamicResource MhDivider}" Margin="0,0,0,14" />
+
+            <TextBlock Style="{DynamicResource MhSectionText}" Text="Tools in this tab" Margin="0,0,0,8" />
+
+            <TextBlock Style="{DynamicResource MhStrongText}" Text="Clash Matrix" Margin="0,0,0,1" />
+            <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       Text="Builds Clash Detective tests from a clash matrix - imported from Excel, or made from the model's own categories. Search sets are split by discipline (AR, ST, MEC, EL, ICT) from each model file, numbered and named per pair, with priorities and tolerances from the built-in clash standard. Re-running keeps results; nothing outside the 'Clash Matrix' sets is changed." />
+
+            <TextBlock Style="{DynamicResource MhStrongText}" Text="Export Results" Margin="0,0,0,1" />
+            <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       Text="Clash Detective results to an Excel workbook and a PDF report: a summary per test and status, then every clash with its two elements, distance, location and a picture." />
+
+            <Border Style="{DynamicResource MhNotePanel}" Margin="0,4,0,0">
+                <StackPanel>
+                    <TextBlock x:Name="BuildText" Style="{DynamicResource MhMonoText}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="HostText" Style="{DynamicResource MhMonoText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    <TextBlock x:Name="RuntimeText" Style="{DynamicResource MhMonoText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                <Button x:Name="LinkedInButton" Click="OnLinkedIn" Margin="0,0,8,0" Content="LinkedIn profile" />
+                <Button Click="OnOpenLogs" Content="Open log folder" x:Name="LogButton" />
+            </StackPanel>
+        </StackPanel>
+        </ScrollViewer>
+
+        <ui:MhFooter Grid.Row="2">
+            <ui:MhFooter.Actions>
+                <Button Style="{DynamicResource MhPrimaryButton}" Click="OnClose"
+                        Content="Close" IsCancel="True" IsDefault="True" />
+            </ui:MhFooter.Actions>
+        </ui:MhFooter>
+    </Grid>
+</Window>

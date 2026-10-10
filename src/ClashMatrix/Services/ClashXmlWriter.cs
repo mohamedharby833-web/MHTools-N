@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.IO;
+using System.Globalization;
 using System.Text;
 using System.Xml;
 using ClashMatrix.Model;
@@ -9,12 +9,15 @@ namespace ClashMatrix.Services
     /// <summary>
     /// Writes the Navisworks clash-test exchange XML (the file imported through
     /// Clash Detective > Batch > Import), matching Navisworks' own batch format.
-    /// Search sets are flat, so locators are "lcop_selection_set_tree/{Name}".
+    /// Locators point at the add-in's set folder:
+    /// "lcop_selection_set_tree/Clash Matrix/{Name}".
     /// </summary>
     public static class ClashXmlWriter
     {
-        public static void Write(string path, string batchName,
-            IList<ClashTestDefinition> tests, string units)
+        /// <param name="units">An XML unit name from <see cref="UnitConverter.XmlUnit"/>.</param>
+        /// <param name="defaultToleranceMm">Tolerance for tests without one from the Tolerance sheet.</param>
+        public static void Write(string path, string batchName, IList<ClashTestDefinition> tests,
+            string units, double defaultToleranceMm)
         {
             var settings = new XmlWriterSettings
             {
@@ -41,9 +44,7 @@ namespace ClashMatrix.Services
 
                 w.WriteStartElement("clashtests");
                 foreach (ClashTestDefinition t in tests)
-                {
-                    WriteClashTest(w, t, units);
-                }
+                    WriteClashTest(w, t, units, defaultToleranceMm);
                 w.WriteEndElement(); // clashtests
 
                 w.WriteEndElement(); // batchtest
@@ -52,9 +53,10 @@ namespace ClashMatrix.Services
             }
         }
 
-        private static void WriteClashTest(XmlWriter w, ClashTestDefinition t, string units)
+        private static void WriteClashTest(XmlWriter w, ClashTestDefinition t, string units, double defaultToleranceMm)
         {
-            double tolerance = UnitConverter.MmToUnit(t.ToleranceMm, units);
+            double toleranceMm = t.ToleranceFromSheet ? t.ToleranceMm : defaultToleranceMm;
+            double tolerance = UnitConverter.MmToXmlUnit(toleranceMm, units);
 
             w.WriteStartElement("clashtest");
             w.WriteAttributeString("name", t.Name);
@@ -62,7 +64,10 @@ namespace ClashMatrix.Services
             w.WriteAttributeString("status", "ok");
             w.WriteAttributeString("tolerance", UnitConverter.FormatTolerance(tolerance));
             w.WriteAttributeString("merge_composites", "1");
-            w.WriteAttributeString("priority", t.Priority.ToString(System.Globalization.CultureInfo.InvariantCulture));
+#if NAVIS2026 || NAVIS2027
+            // Clash test priority exists from Navisworks 2026; older importers do not know it.
+            w.WriteAttributeString("priority", t.Priority.ToString(CultureInfo.InvariantCulture));
+#endif
 
             w.WriteStartElement("default_assignee");
             w.WriteAttributeString("display_name", "");
@@ -72,13 +77,31 @@ namespace ClashMatrix.Services
             w.WriteAttributeString("mode", "none");
             w.WriteEndElement();
 
-            WriteSelection(w, "left", "lcop_selection_set_tree/" + t.LeftName);
-            WriteSelection(w, "right", "lcop_selection_set_tree/" + t.RightName);
+            WriteSelection(w, "left", Locator(t.LeftName));
+            WriteSelection(w, "right", Locator(t.RightName));
 
             w.WriteStartElement("rules");
             w.WriteEndElement();
 
             w.WriteEndElement(); // clashtest
+        }
+
+        /// <summary>Locator of a set in the add-in's folder. '/' separates locator levels, so it cannot be part of a name.</summary>
+        public static string Locator(string setName)
+        {
+            return "lcop_selection_set_tree/" + NavisClashCreator.FolderName + "/" + setName;
+        }
+
+        /// <summary>Set names that cannot be written as a locator.</summary>
+        public static List<string> FindUnsafeNames(IEnumerable<string> setNames)
+        {
+            var bad = new List<string>();
+            foreach (string name in setNames)
+            {
+                if (name.IndexOf('/') >= 0)
+                    bad.Add(name);
+            }
+            return bad;
         }
 
         private static void WriteSelection(XmlWriter w, string side, string locator)

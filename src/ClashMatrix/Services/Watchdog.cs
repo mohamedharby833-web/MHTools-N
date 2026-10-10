@@ -6,9 +6,11 @@ namespace ClashMatrix.Services
     /// <summary>
     /// Appends a running diagnostic log to %TEMP%\ClashMatrix_Log.txt. Used to
     /// capture what the add-in found/did so issues can be shared and diagnosed.
+    /// The log is started afresh once it passes <see cref="MaxBytes"/>.
     /// </summary>
     public static class Watchdog
     {
+        private const long MaxBytes = 2 * 1024 * 1024;
         private static readonly object Gate = new object();
 
         public static string LogPath
@@ -18,7 +20,7 @@ namespace ClashMatrix.Services
 
         public static void Clear()
         {
-            try { File.WriteAllText(LogPath, ""); }
+            try { lock (Gate) File.WriteAllText(LogPath, ""); }
             catch { /* best effort */ }
         }
 
@@ -28,6 +30,10 @@ namespace ClashMatrix.Services
             {
                 lock (Gate)
                 {
+                    var info = new FileInfo(LogPath);
+                    if (info.Exists && info.Length > MaxBytes)
+                        File.WriteAllText(LogPath, "");
+
                     File.AppendAllText(LogPath,
                         DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + "  " + message + Environment.NewLine);
                 }

@@ -3,14 +3,12 @@
 Turns an Excel **clash matrix** into Navisworks **Clash Detective** tests, in one
 click. No more pasting the matrix into an AI chat and importing a hand-made XML.
 
-Two actions, both from the one dialog:
-
-1. **Create sets + tests** — scans the **open model** (every appended file), creates
-   one **search set per unique category** (e.g. one `Doors` set covering doors across
-   all files), then builds every clash test directly in the open document through the
-   Navisworks .NET API, each test's Left/Right linked to its category search set.
-2. **Generate XML** — writes the Navisworks clash-test exchange file
-   (`nw-exchange-12.0.xsd`) that you import through *Clash Detective → Batch → Import*.
+The search sets the add-in creates live in a **`Clash Matrix` folder** in the
+*Sets* window. Clash Detective has no test folders, so the tests sit at the top
+level — and a test counts as the add-in's **only when both its sides are linked to
+sets in that folder**. Sets elsewhere, and any test linked to anything else, are
+never changed, so your own sets and tests are safe. Every run that changes the
+model is a single **Undo** step.
 
 Targets **Navisworks Manage 2024, 2025, 2026 and 2027** — one project, four build
 configurations, all on **.NET Framework 4.8** (the Navisworks .NET API has stayed on
@@ -20,34 +18,116 @@ configurations, all on **.NET Framework 4.8** (the Navisworks .NET API has staye
 
 ## How it works
 
-- **Search sets come from the model, not the spreadsheet.** The add-in walks the model
-  tree of every appended NWC/NWD file and collects the unique categories (e.g. `Doors`,
-  `Walls`, `Ducts`, `Bridge`, `Piers`). It then creates **one flat search set per
-  category**, named by the plain category name. No folders, no abbreviations.
-- **The clash matrix just defines which pairs to test.** A filled cell below the
-  diagonal = one clash test `{RowDescription}-vs-{ColDescription}` (e.g.
-  `Doors-vs-Windows`). Each side is linked to the search set of the same name.
-
-Because the search sets are *search-based* (they match a category across all links),
-newly appended files are picked up automatically; the **Update sets** button re-scans
-and reports the per-set item counts.
+- **Sets are split by discipline.** Every appended file has a discipline - **AR**
+  architecture, **ST** structure, **MEC** mechanical (HVAC, plumbing, drainage, fire
+  fighting), **EL** electrical, **ICT** information & communication (data,
+  telephone, security, nurse call, audio-visual devices), or **GEN**. Two choices
+  split a file by category instead: **EL+ICT** (an electrical file that also holds the
+  ICT devices: those go to ICT, the rest to EL) and **MEP** (one file with all
+  services: MEC / EL / ICT).
+  The discipline is guessed and shown in the **Models** table, where it can be changed
+  (the choice is remembered per file name, in `%AppData%\ClashMatrix\ModelDisciplines.txt`).
+  A word in the file name decides (ARCH, STR, MECH, ELEC, ICT, ELV, MEP, ...); a
+  one-letter role code (`…-1A0-…` AR, `…-1S0-…` ST, `…-1M0-…` MEC, `…-1EA-…` EL) only
+  when the file's content agrees, since a letter like the D of `1DS` can mean
+  drainage or data systems; otherwise the content decides.
+  Each set is one discipline's elements of one category - **AR Walls** and **ST
+  Walls**, **MEC Pipes**, **EL Cable Trays**, **ICT Security Devices** - and searches
+  only the files that send that category to that discipline, so **an element is
+  never in two sets**.
+- **A category of another discipline is never put in a file's sets.** Mechanical
+  categories (ducts, pipes, air terminals, sprinklers, mechanical and plumbing
+  equipment and fixtures, ...) only go to **MEC**; electrical ones (electrical
+  equipment and fixtures, lighting, fire alarm, ...) only to **EL**; ICT devices to
+  **ICT** or **EL**; cable trays and conduits to **EL** or **ICT**. **AR** and **ST**
+  sets take none of these (nor MEP fabrication hangers). So there is no *EL Ducts*,
+  *ICT Pipes*, *MEC Cable Trays* or *AR Plumbing Fixtures*: such elements are left out
+  of every set, and Scan Model lists each file and the categories left out of it.
+  Neutral categories (Generic Models, Specialty Equipment, ...) stay with their file.
+- **Search sets are real searches** on the Revit *Element > Category* property
+  (addressed by its internal name, so it works in any Navisworks language), within
+  the files of its discipline. After appending a file, **Update Search Sets** adds it
+  to its discipline's sets - in place, so tests stay linked. Related categories are folded into their
+  parent: *Ducts* also matches *Duct Fittings*, *Duct Accessories*, *Duct
+  Insulations* and *Flex Ducts*; *Pipes* matches *Pipe Fittings*, *Pipe
+  Accessories*, *Pipe Insulations* and *Flex Pipes*; *Cable Trays* and *Conduits*
+  include their fittings; *Walls* includes *Wall Sweeps*; and one **Curtain Walls**
+  set holds *Curtain Panels*, *Curtain Wall Mullions* and *Curtain Systems*.
+- **The clash matrix defines which pairs to test.** Each filled cell = one clash test,
+  named `[Number] - [Discipline 1] [CATEGORY 1] - [Discipline 2] [CATEGORY 2]`, e.g.
+  `381 - AR WALLS - ST FLOORS`. Tests are numbered reading the matrix row by row,
+  sets grouped by discipline (AR, ST, MEC, EL, ICT, …; `GEN` when a set's discipline is
+  not known). Each side is linked to the search set of the same name in the
+  `Clash Matrix` folder.
+- **Re-running is safe.** A test is recognised by the **two sets it links**, not by
+  its name, so when the numbers shift (a category comes or goes) the test is just
+  **renamed in place** and keeps its results, statuses and comments. Unchanged tests
+  are left alone; changed ones are updated in place; tests the matrix no longer has
+  are removed only if you say so (together with Clash Matrix sets nothing uses any
+  more, e.g. an old *Duct Accessories* set).
 
 ### The matrix
 
 The workbook must contain a **`Matrix`** sheet (and optionally a **`Tolerance`** sheet):
 
 - Rows 1–5 are column headers: `Discipline` / `Description` / `Weighting` /
-  `Abbreviation` / `Revit Category`. Only **Description** (column B) is used — it must
-  match the category names in the model.
-- Columns A–E are the matching row labels; data starts at F6.
-- A **filled cell below the diagonal** = one test between that row's category and that
-  column's category. The value (1/2/3) is a weighting and is **ignored** (priority `0`).
+  `Abbreviation` / `Revit Category`; columns A–E are the matching row labels; data
+  starts at F6.
+- **Description** (column B / row 2) is the search-set name. It can span several
+  rows, one per **Revit Category** (column E / row 5); the set then matches all of
+  those categories. With no Revit Category, the Description itself is taken as the
+  category name.
+- A **filled cell** = one test between that row's set and that column's set. Either
+  side of the diagonal works; a pair filled on both sides is still one test. The
+  value is the test **priority**: 1 = High, 2 = Medium, 3 = Low — the only three
+  Navisworks has. A matrix on a 1–5 scale is folded into them (1 → High, 2–3 →
+  Medium, 4–5 → Low). Priority is set on the test in Navisworks 2026+; 2024/2025
+  have no priority in the API.
 
 ### Tolerance
 
-Tolerance is read **per test from the `Tolerance` sheet** (in **mm**), falling back to
-the dialog's *Tolerance (mm)* value (default **10**) when a cell is blank or the sheet
-is missing. It is converted to the document's length unit for both the XML and the API.
+Tolerance is read **per test from the `Tolerance` sheet** (in **mm**; `0` is
+allowed). Tests without a value use the dialog's *Tolerance (mm)* (default **10**),
+read at the moment you create the tests — the grid shows which is which. It is
+converted to the document's length unit for both the API and the XML.
+
+Only **typed** tolerance values count. A formula on the Tolerance sheet is ignored
+(with a warning): such cells are usually leftover copies of the priority formula,
+and their values are priorities, not millimetres.
+
+### Default tests: the built-in clash standard
+
+**Scan Model** builds its tests (one per pair of model categories) from the **built-in
+clash standard**, a clash detection matrix embedded in the add-in:
+
+- **Priority** is the standard's cell value (row weighting + column weighting − 1, on
+  a 1–5 scale) folded into Navisworks' three: 1 → **High**, 2–3 → **Medium**, 4–5 →
+  **Low**. It is set on the test in **Navisworks 2026 and 2027**; 2024 and 2025 have no
+  priority in their API, so there it is kept in the matrix, the grid and the export
+  only. (Navisworks cannot show any other value — a test with priority 4 or 5 has a
+  blank priority, and clicking it crashes Clash Detective.)
+- **Tolerance** is the standard's typed tolerance for the pair, else the dialog's default.
+- Pairs the standard leaves **blank are not tested**. Categories it does not list
+  (Generic Models, Hardscape, …) are tested against everything, with weighting 3 and
+  the default tolerance, and are named in a warning.
+- Each set uses the standard's rows **of its own discipline**: *AR Walls* the
+  architectural Walls row, *ST Walls* the structural one; MEC, EL and ICT sets use the
+  services rows. A category the standard has no row for in that discipline falls
+  back to its other rows. Where several rows apply (Pipes sits under two services
+  groups), the **most important** priority and the **tightest** tolerance win.
+  Folded categories count with their parent (Pipes includes Pipe Fittings,
+  Accessories, Insulations and Flex Pipes).
+
+The standard lives in `src/ClashMatrix/Resources/ClashStandard.tsv`; regenerate it
+with `tools/ClashStandard` when the source workbook changes (see its README).
+
+### Exported workbook
+
+**Export Matrix…** writes the matrix look: dark discipline banners, grey Description
+and beige Revit Category headers, the weighting column and row, and the standard
+priority colours (1 High red, 2 Medium amber, 3 Low yellow) as conditional formatting, so
+they follow when a priority is edited in Excel, plus a Priority Key. The export reads
+back in with **Import Matrix…** unchanged.
 
 ---
 
@@ -112,24 +192,111 @@ Each `Contents\<NN>` folder holds the four build outputs for that release:
 four releases (`Nw21`..`Nw24`). The build output for release `NN` is
 `src\ClashMatrix\bin\<year>\`.
 
-Restart Navisworks. A **Clash Matrix** tab appears with the **Clash Matrix** button.
+Restart Navisworks. An **MHTools-N** tab appears with **Clash Matrix** and **Export
+Results** (panel *Clash*) and **About** (panel *Help*).
 
 ---
 
 ## Use
 
 1. Open the coordination model in Navisworks Manage (with all files appended).
-2. Click **Clash Matrix → Clash Matrix**.
-3. **Import Matrix…** and pick the `.xlsx`. The dialog previews the test count and the
-   categories it references.
-4. Set the tolerance if needed, then:
-   - **Create sets + tests** — scans the model, creates the category search sets, then
-     all clash tests, or
-   - **Generate XML…** — writes the exchange file for *Clash Detective → Batch → Import*.
-5. After appending new files, click **Update sets** to re-scan and report item counts.
+2. Click **MHTools-N → Clash Matrix**. The window has two tabs.
+3. **Search Sets** tab:
+   - **Models** - each appended file and its discipline; correct a wrong guess.
+   - **Sets** - *Best practice* (each discipline keeps only its own categories; EL and
+     ICT may share theirs) or *All categories* (every category in every file gets a
+     set: *AR Plumbing Fixtures*, *MEC Cable Trays*, ...).
+   - **Scan Model** lists one set per discipline and category, and the default tests
+     (priorities and tolerances from the built-in clash standard). Or **Import
+     Matrix…** an `.xlsx`. Nothing in the model changes yet.
+   - The **search box** above the list shows only the sets whose name, discipline,
+     categories, files or status contain what you type (e.g. `AR` or `pipes`).
+     The **tick box in the column header** ticks or unticks every set shown (a dash:
+     some are ticked). With several rows selected (Ctrl / Shift + click), ticking or
+     unticking one of them does the same to all of them.
+   - In the list, **untick** a set to leave it out (with its tests), double-click its
+     **name** to rename it (its tests follow) or its **Revit categories** to edit what
+     it matches. *Status* says whether it exists; **Count Items** shows how much each
+     set finds.
+   - **Create Search Sets** creates the ticked sets, updates existing ones in place
+     (tests stay linked) and deletes the unticked ones that exist - unless a test
+     still uses them. You confirm first.
+   - **Next: Clash Tests →** moves to the second tab.
+4. **Clash Tests** tab: the **search box** filters the tests by name, left or right
+   set, priority or status (`AR WALLS` finds `3 - AR WALLS - AR DOORS` but not *AR
+   CURTAIN WALLS*); the header tick box and the selected rows work as on the first
+   tab. Tick or untick tests, double-click a **name** or a
+   **tolerance** to edit it (*own* = the test's, *default* = the box above), pick a
+   **priority** (High / Medium / Low / None). *Status* shows New, In model, Rename or
+   Excluded. **Renumber** names the tests again in matrix order (typed names are
+   kept).
+5. **Create Clash Tests** - the main button on this tab (**← Back** returns to the
+   sets) - creates every ticked set and test, also those hidden by the search. A confirmation says
+   exactly how many of the add-in's tests will be added, updated, renamed, kept and
+   (optionally) removed - including those now unticked. A test whose name is already
+   taken by a test that isn't linked to the `Clash Matrix` sets is skipped, never
+   overwritten.
+6. **Export Matrix…** writes the ticked sets and tests to Excel to edit and re-import.
 
-Search sets that already exist are kept; nothing is silently dropped — any category
-the matrix references but the model doesn't contain is reported.
+After appending a file, **Scan Model** again (it rebuilds the list - ticks and typed
+names are asked about first) and **Create Search Sets**.
+
+**Generate XML…** writes the exchange file for *Clash Detective → Batch → Import*.
+Its locators point at `Clash Matrix/{set}`, so create the sets first.
+
+### Export Results
+
+**MHTools-N → Export Results** writes the Clash Detective results of the ticked tests
+(all, none, only the Clash Matrix tests, or only tests with clashes), with the same
+choices as Clash Detective's own Report dialog - remembered for next time:
+
+- **Contents**: Summary, Clash Point, Date Found, Assigned To, Date Approved, Approved
+  By, Date Resolved, Resolved By, Layer Name, Item Path, Item ID, Status, Priority,
+  Distance, Description, Comments, Image, Clash Group. (A clash's own Priority, Date
+  Resolved and Resolved By exist from Navisworks 2026. Grid Location, Quick Properties
+  and the simulation fields are not in the API.)
+- **Include clashes**: New, Active, Reviewed, Approved, Resolved.
+- **Output**: Excel workbook and / or PDF report.
+
+- **Excel workbook** - a *Summary* sheet (one row per test: type, tolerance, priority,
+  status, last run, and the count of New / Active / Reviewed / Approved / Resolved,
+  with a total) and a *Results* sheet (one row per clash: group, status, distance in
+  mm, location in m, and for both items the category, type, element ID, level and
+  source file, plus assigned to, approved by, dates, description and comments).
+  Header row frozen and filtered; status cells coloured as in Clash Detective.
+- **PDF report** - A4 portrait. A summary page (totals by status, a table of the
+  tests), then every test with its clashes in a table as in Clash Detective's own
+  report - *Image | Clash | Item 1 (Item ID, Path) | Item 2 (Item ID, Path)* - about
+  11 clashes a page with pictures, about 20 without. Tests follow on from one another;
+  a table that runs over a page repeats its heading. Page header and numbering on
+  every page.
+- **Pictures** are zoomed onto each clash from a corner above, item 1 red, item 2
+  green, the rest of the model faded - not the whole building with the clash a dot in
+  it. A clash with a saved viewpoint keeps Clash Detective's own picture. The main
+  view is used while the pictures are made and put back afterwards.
+  Written by the add-in itself, no PDF printer or library needed. (Text outside the
+  Western character set, e.g. Arabic, prints as `?` - the standard PDF fonts have no
+  such glyphs.)
+
+Columns and cell lines follow the chosen contents (Item ID, Item Path or the element
+and file, Layer Name, Status, Priority, Distance, dates and people in the clash cell;
+Clash Point, Comments and a long Description on a line under the items). Pictures (*Image*) take a moment
+per clash; for more than 400 clashes the add-in asks first, and Cancel on the progress
+bar stops.
+
+### About
+
+**MHTools-N → About** shows the version, the Navisworks it runs in and the runtime,
+with links to the author's profile and to the log file.
+
+Long operations show the Navisworks progress bar and can be cancelled. A
+diagnostic log is written to `%TEMP%\ClashMatrix_Log.txt`.
+
+> **Upgrading from 1.0:** 1.0 created plain (static) sets at the root of the Sets
+> window and replaced *every* clash test. 1.1 leaves those old sets alone, and its
+> tests that are linked to them count as "not the add-in's" — so a matrix test with
+> the same name is skipped. Delete the 1.0 tests and root-level sets by hand once
+> you no longer need them, then run Create Clash Tests again.
 
 ---
 
@@ -142,15 +309,17 @@ src/ClashMatrix/
   Ribbon/AddinRibbon.xaml             ribbon tab/button definition
   Resources/ClashMatrix16.png         16px + 32px ribbon icons
   Resources/ClashMatrix32.png
-  Commands/ClashMatrixCommand.cs      opens the dialog
+  Commands/ClashMatrixCommand.cs      opens the dialog (owned by the Navisworks window)
   Model/
-    ClashTestDefinition.cs            one test: left/right category names, tolerance
-    MatrixParseResult.cs              parse result
+    ClashTestDefinition.cs            one test: left/right set names, tolerance, priority
+    MatrixParseResult.cs              sets, their Revit categories, tests, warnings
   Services/
     XlsxMatrixReader.cs               pure .NET xlsx reader (no third-party DLLs)
+    XlsxMatrixWriter.cs               xlsx writer (same layout, round-trips)
     ClashXmlWriter.cs                 Navisworks exchange XML writer
-    NavisClashCreator.cs              scans model categories + creates sets/tests
-    UnitConverter.cs                  mm <-> document unit + tolerance formatting
+    NavisClashCreator.cs              model scan, search sets, clash tests, progress
+    UnitConverter.cs                  mm <-> document unit, tolerance parsing/format
+    Watchdog.cs                       diagnostic log
   UI/
-    ClashMatrixWindow.xaml(.cs)       the dialog
+    ClashMatrixWindow.xaml(.cs)       the dialog (MH Tools skin)
 ```

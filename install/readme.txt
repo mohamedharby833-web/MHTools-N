@@ -5,17 +5,25 @@ Navisworks Manage add-in by Mohamed Ali Harby.
 
 Turns an Excel clash matrix into Navisworks Clash Detective tests:
 
-  Search sets       Scans every appended NWC/NWD file and creates one flat
-                    search set per Revit category (Doors, Walls, Ducts, Pipes,
-                    ...), with fittings folded into their parent category.
+  Search sets       Scans every appended NWC/NWD file and creates one search
+                    set per Revit category (Doors, Walls, Ducts, Pipes, ...),
+                    with fittings folded into their parent category. The sets
+                    are real searches, so newly appended files are picked up.
 
   Clash tests       Creates one clash test per matrix pair, each side linked to
-                    its category search set. Tolerance and priority come from
-                    the matrix.
+                    its search set. Tolerance and priority come from the
+                    matrix. You confirm what changes first; one Undo reverts it.
 
   Matrix export     Generates the full clash matrix from the model's own
                     categories and writes it to Excel so you can edit it, then
-                    re-import it with Update Matrix.
+                    re-import it with Import Matrix.
+
+  Safe by design    Sets live in a "Clash Matrix" folder in the Sets window.
+                    Only clash tests linked to those sets are ever changed;
+                    your own sets and tests are left alone.
+
+  Export Results    Clash Detective results to an Excel workbook and a PDF
+                    report (summary per test, every clash with a picture).
 
   Generate XML      Writes the Navisworks clash-test exchange file for
                     Clash Detective > Batch > Import.
@@ -26,7 +34,8 @@ Installing
    "files in use" message: close Navisworks, then click Retry. It never closes
    Navisworks for you.
 2. Double-click the MSI. No administrator rights are needed.
-3. Start Navisworks. A Clash Matrix tab appears with the Clash Matrix button.
+3. Start Navisworks. An MHTools-N tab appears with Clash Matrix, Export
+   Results and About.
 
 Installing a newer (or the same) version replaces the one already there.
 

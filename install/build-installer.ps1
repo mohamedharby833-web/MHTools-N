@@ -114,7 +114,8 @@ New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 # Exactly these files, never "whatever is in bin". Navisworks provides its own API
 # DLLs at runtime, so they are not copied. The ribbon XAML and icons are loaded by
 # filename from the plugin folder.
-$shipFiles = @('ClashMatrix.dll', 'AddinRibbon.xaml', 'ClashMatrix16.png', 'ClashMatrix32.png')
+$icons     = @('ClashMatrix16.png', 'ClashMatrix32.png', 'ExportResults16.png', 'ExportResults32.png', 'About16.png', 'About32.png')
+$shipFiles = @('ClashMatrix.dll', 'AddinRibbon.xaml') + $icons
 
 foreach ($year in $targets.Keys) {
     $nn      = $targets[$year].Nn
@@ -137,7 +138,7 @@ foreach ($year in $targets.Keys) {
     # mirror them there so the MSI behaves exactly like the debug deploy.
     $localeDir = Join-Path $contentsDir 'en-US'
     New-Item -ItemType Directory -Path $localeDir -Force | Out-Null
-    foreach ($name in @('AddinRibbon.xaml', 'ClashMatrix16.png', 'ClashMatrix32.png')) {
+    foreach ($name in @('AddinRibbon.xaml') + $icons) {
         $source = Join-Path $contentsDir $name
         if (Test-Path $source) { Copy-Item $source -Destination $localeDir }
     }
@@ -160,19 +161,50 @@ Write-Host '  generating Files.wxs ...' -ForegroundColor DarkGray
 $components = New-Object System.Collections.Generic.List[string]
 $script:index = 0
 
+# Per-user components cannot use a file as their KeyPath (ICE38): each one gets
+# an HKCU value instead. This key is the add-in's install record.
+$regKey = 'Software\Mohamed Ali Harby\ClashMatrix\Components'
+
+# A component that holds a file plus a registry KeyPath cannot have a generated
+# GUID (WIX0230). Derive one from the file's path instead: stable from build to
+# build, so an upgrade still recognises each component.
+function Get-StableGuid([string]$Text) {
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    $bytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes('ClashMatrix:' + $Text.ToLowerInvariant()))
+    return (New-Object System.Guid -ArgumentList (, $bytes)).ToString().ToUpperInvariant()
+}
+
+function New-FileComponent([string]$DirId, [string]$Relative) {
+    $script:index++
+    $id = "cmp$script:index"
+    $guid = Get-StableGuid $Relative
+    $script:components.Add(
+        "      <Component Id=""$id"" Directory=""$DirId"" Guid=""$guid"">" + [Environment]::NewLine +
+        "        <File Source=""$Relative"" KeyPath=""no"" />" + [Environment]::NewLine +
+        "        <RegistryValue Root=""HKCU"" Key=""$regKey"" Name=""$id"" Type=""integer"" Value=""1"" KeyPath=""yes"" />" + [Environment]::NewLine +
+        "      </Component>")
+}
+
+# Every folder the MSI creates under the user profile must also be removed on
+# uninstall (ICE64), or empty Contents\<NN> folders are left behind.
+function New-RemoveFolderComponent([string]$DirId) {
+    $id = "rm$DirId"
+    $script:components.Add(
+        "      <Component Id=""$id"" Directory=""$DirId"">" + [Environment]::NewLine +
+        "        <RemoveFolder Id=""rf$DirId"" On=""uninstall"" />" + [Environment]::NewLine +
+        "        <RegistryValue Root=""HKCU"" Key=""$regKey"" Name=""$id"" Type=""integer"" Value=""1"" KeyPath=""yes"" />" + [Environment]::NewLine +
+        "      </Component>")
+}
+
 # Emits the <Directory> tree for a folder (recursing into subfolders such as the
 # en-US locale mirror) and records one <Component> per file it finds.
 function Get-DirXml([string]$SourceDir, [string]$Name, [string]$Id) {
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine("      <Directory Id=""$Id"" Name=""$Name"">")
     foreach ($file in Get-ChildItem $SourceDir -File | Sort-Object Name) {
-        $script:index++
-        $relative = $file.FullName.Substring($installerDir.Length + 1)
-        $script:components.Add(
-            "      <Component Id=""cmp$script:index"" Directory=""$Id"">" + [Environment]::NewLine +
-            "        <File Source=""$relative"" />" + [Environment]::NewLine +
-            "      </Component>")
+        New-FileComponent $Id ($file.FullName.Substring($installerDir.Length + 1))
     }
+    New-RemoveFolderComponent $Id
     foreach ($sub in Get-ChildItem $SourceDir -Directory | Sort-Object Name) {
         # Id is the parent's id + the folder name, so sibling folders that share a
         # name (e.g. the en-US locale mirror under every Contents\<NN>) stay unique.
@@ -185,12 +217,7 @@ function Get-DirXml([string]$SourceDir, [string]$Name, [string]$Id) {
 
 # The one file at the bundle root (PackageContents.xml) lives in INSTALLFOLDER.
 foreach ($file in Get-ChildItem $bundleDir -File | Sort-Object Name) {
-    $script:index++
-    $relative = $file.FullName.Substring($installerDir.Length + 1)
-    $script:components.Add(
-        "      <Component Id=""cmp$script:index"" Directory=""INSTALLFOLDER"">" + [Environment]::NewLine +
-        "        <File Source=""$relative"" />" + [Environment]::NewLine +
-        "      </Component>")
+    New-FileComponent 'INSTALLFOLDER' ($file.FullName.Substring($installerDir.Length + 1))
 }
 
 $dirXml = Get-DirXml (Join-Path $bundleDir 'Contents') 'Contents' 'dirContents'

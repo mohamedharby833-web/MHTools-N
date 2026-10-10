@@ -56,8 +56,32 @@
       </Directory>
     </StandardDirectory>
 
+    <!--
+      Folders under the user profile must be removed on uninstall (ICE64), and a
+      per-user component needs an HKCU KeyPath (ICE38). RemoveFolder only deletes a
+      folder that is empty, so other Autodesk plug-ins are never affected.
+    -->
+    <ComponentGroup Id="BundleFolders">
+      <Component Id="rmINSTALLFOLDER" Directory="INSTALLFOLDER">
+        <RemoveFolder Id="rfINSTALLFOLDER" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Mohamed Ali Harby\ClashMatrix" Name="InstallFolder"
+                       Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+      </Component>
+      <Component Id="rmAppPluginsDir" Directory="AppPluginsDir">
+        <RemoveFolder Id="rfAppPluginsDir" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Mohamed Ali Harby\ClashMatrix\Components" Name="rmAppPluginsDir"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+      <Component Id="rmAutodeskDir" Directory="AutodeskDir">
+        <RemoveFolder Id="rfAutodeskDir" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Mohamed Ali Harby\ClashMatrix\Components" Name="rmAutodeskDir"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
     <Feature Id="Main" Title="Clash Matrix" Level="1">
       <ComponentGroupRef Id="BundleFiles" />
+      <ComponentGroupRef Id="BundleFolders" />
     </Feature>
 
     <!--

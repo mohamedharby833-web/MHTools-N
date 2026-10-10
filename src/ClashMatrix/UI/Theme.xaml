@@ -1,0 +1,1059 @@
+<!--
+    The styles of every Clash Matrix window - the MH Tools theme (MH Tools 2.6.2), copied as is.
+
+    WHAT a button, a tick box or a table is built from is here. The colours and
+    sizes are NOT: every one of them is read from UI/MhTheme.cs
+    ({x:Static ui:MhTheme...}), so the look is changed there, in one place, and
+    this file follows.
+
+    A window gets its own copy of this dictionary from MhTheme.Apply, which it
+    calls first thing in its constructor. So:
+
+      - inside this file, earlier entries are used with StaticResource;
+      - in a window's XAML, a KEYED style from here is used with DynamicResource:
+        a window must still open, plain, if this file could not be loaded;
+      - a window's own style that only adds a margin to a control says
+        BasedOn="{StaticResource {x:Type CheckBox}}" - that finds the style
+        below when the theme is there, and Windows' own when it is not.
+
+    Controls style themselves: each kind has a keyed style (MhCheckBox) and a
+    keyless one based on it, so every CheckBox in a themed window is the
+    theme's without being told. Text is the exception - no style here targets
+    TextBlock without a key, because that would restyle the text inside every
+    other control as well.
+
+    Contents: colours - focus - buttons - tick boxes and radio buttons - text
+    boxes - drop-down lists - lists - tables - groups and tabs - progress -
+    trees - text - areas.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="clr-namespace:ClashMatrix.UI">
+
+    <!-- ===== colours, as brushes ===== -->
+
+    <SolidColorBrush x:Key="MhAccentBrush" Color="{x:Static ui:MhTheme.Accent}" />
+    <SolidColorBrush x:Key="MhAccentHoverBrush" Color="{x:Static ui:MhTheme.AccentHover}" />
+    <SolidColorBrush x:Key="MhAccentPressedBrush" Color="{x:Static ui:MhTheme.AccentPressed}" />
+    <SolidColorBrush x:Key="MhAccentTintBrush" Color="{x:Static ui:MhTheme.AccentTint}" />
+    <SolidColorBrush x:Key="MhSelectionBrush" Color="{x:Static ui:MhTheme.Selection}" />
+    <SolidColorBrush x:Key="MhOnAccentBrush" Color="{x:Static ui:MhTheme.OnAccent}" />
+    <SolidColorBrush x:Key="MhSurfaceBrush" Color="{x:Static ui:MhTheme.Surface}" />
+    <SolidColorBrush x:Key="MhSurfaceHoverBrush" Color="{x:Static ui:MhTheme.SurfaceHover}" />
+    <SolidColorBrush x:Key="MhSurfacePressedBrush" Color="{x:Static ui:MhTheme.SurfacePressed}" />
+    <SolidColorBrush x:Key="MhSurfaceSunkenBrush" Color="{x:Static ui:MhTheme.SurfaceSunken}" />
+    <SolidColorBrush x:Key="MhTextBrush" Color="{x:Static ui:MhTheme.Text}" />
+    <SolidColorBrush x:Key="MhTextMutedBrush" Color="{x:Static ui:MhTheme.TextMuted}" />
+    <SolidColorBrush x:Key="MhLineBrush" Color="{x:Static ui:MhTheme.Line}" />
+    <SolidColorBrush x:Key="MhControlBorderBrush" Color="{x:Static ui:MhTheme.ControlBorder}" />
+    <SolidColorBrush x:Key="MhSuccessBrush" Color="{x:Static ui:MhTheme.Success}" />
+    <SolidColorBrush x:Key="MhWarningBrush" Color="{x:Static ui:MhTheme.Warning}" />
+    <SolidColorBrush x:Key="MhDangerBrush" Color="{x:Static ui:MhTheme.Danger}" />
+
+    <!-- ===== keyboard focus: an accent ring just outside the control ===== -->
+
+    <Style x:Key="MhFocusVisual">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="-3"
+                               RadiusX="{x:Static ui:MhTheme.FocusRingRadius}"
+                               RadiusY="{x:Static ui:MhTheme.FocusRingRadius}"
+                               Stroke="{StaticResource MhAccentBrush}" StrokeThickness="2"
+                               SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== buttons ===== -->
+
+    <!-- What every kind of button is drawn as. The colours come from the
+         button itself, so the styles below only differ in their setters. -->
+    <ControlTemplate x:Key="MhButtonTemplate" TargetType="Button">
+        <Border x:Name="Chrome"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{x:Static ui:MhTheme.Corner}"
+                SnapsToDevicePixels="True">
+            <ContentPresenter Margin="{TemplateBinding Padding}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              RecognizesAccessKey="True" />
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- An ordinary button: white, outlined. The size of the buttons at the
+         foot of a window.
+
+         A style based on this one that changes Background has to repeat the
+         two triggers with its own colours, as MhPrimaryButton does: a trigger
+         beats a setter wherever in the chain it comes from, so without them
+         the button would turn light grey under the pointer. -->
+    <Style x:Key="MhButton" TargetType="Button">
+        <Setter Property="Template" Value="{StaticResource MhButtonTemplate}" />
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.ButtonHeight}" />
+        <Setter Property="MinWidth" Value="{x:Static ui:MhTheme.ButtonMinWidth}" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource MhFocusVisual}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhSurfacePressedBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- The one button that does what the window is for: filled with the accent. -->
+    <Style x:Key="MhPrimaryButton" TargetType="Button" BasedOn="{StaticResource MhButton}">
+        <Setter Property="Background" Value="{StaticResource MhAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhOnAccentBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhAccentHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource MhAccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhAccentPressedBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource MhAccentPressedBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- A button inside the window - a toolbar, "Browse...", a button in a row:
+         lower, and only as wide as its words. -->
+    <Style x:Key="MhCompactButton" TargetType="Button" BasedOn="{StaticResource MhButton}">
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.CompactButtonHeight}" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="12,0" />
+    </Style>
+
+    <!-- Every button in a themed window is an ordinary one unless it says otherwise.
+         That means every element that is exactly a Button, also inside another
+         control: a Calendar or DatePicker would get these sizes on its arrows.
+         Scroll bars, combo boxes and expanders use other button types and are
+         not touched. -->
+    <Style TargetType="Button" BasedOn="{StaticResource MhButton}" />
+
+    <!-- ===== tick boxes and radio buttons ===== -->
+
+    <Style x:Key="MhCheckBox" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource MhFocusVisual}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <!-- Transparent, not empty: the gap between box and words is clickable too. -->
+                    <Grid Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="Box"
+                                Width="{x:Static ui:MhTheme.TickSize}" Height="{x:Static ui:MhTheme.TickSize}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                CornerRadius="{x:Static ui:MhTheme.SmallCorner}"
+                                VerticalAlignment="Center" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Path x:Name="Tick" Data="M 2.6,7.2 L 5.6,10.2 L 11.4,3.9"
+                                      Stroke="{StaticResource MhOnAccentBrush}" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                      Visibility="Collapsed" />
+                                <Rectangle x:Name="Dash" Width="8" Height="2"
+                                           Fill="{StaticResource MhOnAccentBrush}" Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <ContentPresenter x:Name="Words" Grid.Column="1" Margin="7,0,0,0"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasContent" Value="False">
+                            <Setter TargetName="Words" Property="Margin" Value="0" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="{x:Null}">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Dash" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="CheckBox" BasedOn="{StaticResource MhCheckBox}" />
+
+    <Style x:Key="MhRadioButton" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource MhFocusVisual}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Width="{x:Static ui:MhTheme.TickSize}" Height="{x:Static ui:MhTheme.TickSize}"
+                              VerticalAlignment="Center">
+                            <Ellipse x:Name="Ring" Fill="{TemplateBinding Background}"
+                                     Stroke="{TemplateBinding BorderBrush}" StrokeThickness="1" />
+                            <Ellipse x:Name="Dot" Width="6" Height="6"
+                                     Fill="{StaticResource MhOnAccentBrush}" Visibility="Collapsed" />
+                        </Grid>
+
+                        <ContentPresenter x:Name="Words" Grid.Column="1" Margin="7,0,0,0"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasContent" Value="False">
+                            <Setter TargetName="Words" Property="Margin" Value="0" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource MhAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Ring" Property="Fill" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Ring" Property="Stroke" Value="{StaticResource MhAccentBrush}" />
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="RadioButton" BasedOn="{StaticResource MhRadioButton}" />
+
+    <!-- ===== text boxes ===== -->
+
+    <!-- The space left and right of the text is the ScrollViewer's margin, not
+         the box's Padding: WPF hands a TextBox's Padding on to that ScrollViewer
+         itself, and binding it here as well would count it twice. -->
+    <Style x:Key="MhTextBox" TargetType="TextBox">
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.ControlHeight}" />
+        <Setter Property="Padding" Value="1,0" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource MhAccentBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{x:Static ui:MhTheme.Corner}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="5,0,5,0" Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource MhSurfaceSunkenBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="TextBox" BasedOn="{StaticResource MhTextBox}" />
+
+    <!-- ===== drop-down lists ===== -->
+
+    <!-- The body of a drop-down list: the outline, and the arrow at its right. -->
+    <ControlTemplate x:Key="MhComboBoxToggle" TargetType="ToggleButton">
+        <Border x:Name="Chrome"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                CornerRadius="{x:Static ui:MhTheme.Corner}" SnapsToDevicePixels="True">
+            <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,1,10,0"
+                  Data="M 0,0 L 4,4 L 8,0"
+                  Stroke="{StaticResource MhTextMutedBrush}" StrokeThickness="1.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- The text box inside a drop-down list that can be typed into: nothing
+         but the text, the outline is the list's. Given by name so that it does
+         not pick up MhTextBox. -->
+    <Style x:Key="MhComboBoxEditor" TargetType="TextBox">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="AllowDrop" Value="True" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="1,0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="SelectionBrush" Value="{StaticResource MhAccentBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost" Background="Transparent" Focusable="False"
+                                  HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Hidden" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MhComboBox" TargetType="ComboBox">
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.ControlHeight}" />
+        <Setter Property="Padding" Value="8,0,28,0" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource MhFocusVisual}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton x:Name="Toggle" Template="{StaticResource MhComboBoxToggle}"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      Focusable="False" ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+
+                        <!-- What is chosen. Clicks go through it to the toggle underneath. -->
+                        <ContentPresenter x:Name="Chosen" IsHitTestVisible="False"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Left"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" />
+
+                        <!-- Only for a list that can be typed into. It stops short of
+                             the arrow, so the arrow still opens the list. -->
+                        <TextBox x:Name="PART_EditableTextBox" Style="{StaticResource MhComboBoxEditor}"
+                                 Margin="6,1,28,1" Visibility="Collapsed"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}" />
+
+                        <Popup x:Name="PART_Popup" Placement="Bottom" Focusable="False"
+                               AllowsTransparency="True" PopupAnimation="Fade"
+                               IsOpen="{TemplateBinding IsDropDownOpen}">
+                            <Border x:Name="DropDown" Margin="0,2,0,0" Padding="2"
+                                    MinWidth="{TemplateBinding ActualWidth}"
+                                    MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                    Background="{StaticResource MhSurfaceBrush}"
+                                    BorderBrush="{StaticResource MhControlBorderBrush}" BorderThickness="1"
+                                    CornerRadius="{x:Static ui:MhTheme.Corner}" SnapsToDevicePixels="True">
+                                <ScrollViewer SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter Property="IsTabStop" Value="False" />
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Chosen" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="HasItems" Value="False">
+                            <Setter TargetName="DropDown" Property="MinHeight" Value="40" />
+                        </Trigger>
+                        <Trigger Property="IsGrouping" Value="True">
+                            <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="Toggle" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBox" BasedOn="{StaticResource MhComboBox}" />
+
+    <Style x:Key="MhComboBoxItem" TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Row" Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="{x:Static ui:MhTheme.RowCorner}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSelectionBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSurfacePressedBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem" BasedOn="{StaticResource MhComboBoxItem}" />
+
+    <!-- ===== lists ===== -->
+
+    <Style x:Key="MhListBox" TargetType="ListBox">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{x:Static ui:MhTheme.Corner}"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ScrollViewer Focusable="False">
+                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </ScrollViewer>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsGrouping" Value="True">
+                            <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.6" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListBox" BasedOn="{StaticResource MhListBox}" />
+
+    <!-- A row of a list: the accent's wash when chosen, whether or not the list
+         has the keyboard - Windows' own turns grey when it has not. -->
+    <Style x:Key="MhListBoxItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Row" Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="{x:Static ui:MhTheme.RowCorner}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSelectionBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListBoxItem" BasedOn="{StaticResource MhListBoxItem}" />
+
+    <!-- ===== tables ===== -->
+
+    <!-- The strip between two column headings that is dragged to resize a column.
+         Nothing to see; the pointer changes over it. -->
+    <Style x:Key="MhColumnGripper" TargetType="Thumb">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Cursor" Value="SizeWE" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A ListView with columns (GridView). The headings and the scrolling are
+         Windows' own, asked for by its key; only the outline is ours. These
+         styles are for a ListView WITH columns: its rows are laid out by the
+         columns, and one without a GridView would show nothing in them. -->
+    <Style x:Key="MhListView" TargetType="ListView">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListView">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{x:Static ui:MhTheme.Corner}"
+                            Padding="1" SnapsToDevicePixels="True">
+                        <ScrollViewer Style="{DynamicResource {x:Static GridView.GridViewScrollViewerStyleKey}}"
+                                      Padding="{TemplateBinding Padding}">
+                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </ScrollViewer>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsGrouping" Value="True">
+                            <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.6" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListView" BasedOn="{StaticResource MhListView}" />
+
+    <Style x:Key="MhListViewItem" TargetType="ListViewItem">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.RowHeight}" />
+        <Setter Property="Padding" Value="2,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Border x:Name="Row" Background="{TemplateBinding Background}"
+                            BorderBrush="{StaticResource MhLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <GridViewRowPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource MhSelectionBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListViewItem" BasedOn="{StaticResource MhListViewItem}" />
+
+    <!-- A column heading of a ListView: quiet text over a hairline. -->
+    <Style x:Key="MhGridViewColumnHeader" TargetType="GridViewColumnHeader">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.RowHeight}" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridViewColumnHeader">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <Thumb x:Name="PART_HeaderGripper" Style="{StaticResource MhColumnGripper}"
+                               HorizontalAlignment="Right" Margin="0,0,-4,0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- The empty heading that fills the rest of the row has nothing to resize. -->
+                        <Trigger Property="Role" Value="Padding">
+                            <Setter TargetName="PART_HeaderGripper" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="GridViewColumnHeader" BasedOn="{StaticResource MhGridViewColumnHeader}" />
+
+    <!-- A DataGrid keeps Windows' own frame, headings row and scrolling - they
+         are many parts that have to agree - and takes its colours and its rows,
+         cells and headings from here. Its own outline is square; for the rounded
+         one put it in a Border with the style MhTableFrame and give the grid
+         BorderThickness="0". -->
+    <Style x:Key="MhDataGrid" TargetType="DataGrid">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="RowBackground" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="AlternatingRowBackground" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource MhLineBrush}" />
+        <Setter Property="VerticalGridLinesBrush" Value="{StaticResource MhLineBrush}" />
+        <Setter Property="GridLinesVisibility" Value="Horizontal" />
+        <Setter Property="HeadersVisibility" Value="Column" />
+        <Setter Property="MinRowHeight" Value="{x:Static ui:MhTheme.RowHeight}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style TargetType="DataGrid" BasedOn="{StaticResource MhDataGrid}" />
+
+    <Style x:Key="MhDataGridColumnHeader" TargetType="DataGridColumnHeader">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="{x:Static ui:MhTheme.RowHeight}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  RecognizesAccessKey="True" />
+                                <!-- Which way the column is sorted; hidden when it is not. -->
+                                <Path x:Name="SortArrow" Grid.Column="1" Margin="6,0,0,0"
+                                      VerticalAlignment="Center" Visibility="Collapsed"
+                                      Data="M 0,4 L 4,0 L 8,4"
+                                      Stroke="{StaticResource MhTextMutedBrush}" StrokeThickness="1.5"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                            </Grid>
+                        </Border>
+                        <Thumb x:Name="PART_LeftHeaderGripper" Style="{StaticResource MhColumnGripper}"
+                               HorizontalAlignment="Left" />
+                        <Thumb x:Name="PART_RightHeaderGripper" Style="{StaticResource MhColumnGripper}"
+                               HorizontalAlignment="Right" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Ascending">
+                            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Descending">
+                            <Setter TargetName="SortArrow" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="SortArrow" Property="Data" Value="M 0,0 L 4,4 L 8,0" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MhDataGridColumnHeader}" />
+
+    <Style x:Key="MhDataGridRow" TargetType="DataGridRow">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhSurfaceHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{StaticResource MhSelectionBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="DataGridRow" BasedOn="{StaticResource MhDataGridRow}" />
+
+    <!-- A cell is see-through: the row behind it carries the colour, so a
+         chosen row is one band and not a row of boxes. -->
+    <Style x:Key="MhDataGridCell" TargetType="DataGridCell">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="DataGridCell" BasedOn="{StaticResource MhDataGridCell}" />
+
+    <!-- The rounded outline for a DataGrid: see MhDataGrid. -->
+    <Style x:Key="MhTableFrame" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{x:Static ui:MhTheme.Corner}" />
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="Padding" Value="1" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- The bar dragged to share space between two areas. -->
+    <Style x:Key="MhGridSplitter" TargetType="GridSplitter">
+        <Setter Property="Background" Value="{StaticResource MhLineBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style TargetType="GridSplitter" BasedOn="{StaticResource MhGridSplitter}" />
+
+    <!-- ===== groups and tabs ===== -->
+
+    <!-- A group is a heading and what belongs under it - no box around it. -->
+    <Style x:Key="MhGroupBox" TargetType="GroupBox">
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GroupBox">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" Margin="0,0,0,6"
+                                          TextElement.FontWeight="SemiBold"
+                                          TextElement.FontSize="{x:Static ui:MhTheme.SectionFontSize}" />
+                        <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="GroupBox" BasedOn="{StaticResource MhGroupBox}" />
+
+    <!-- Tabs along the top: words over a hairline, the chosen one underlined
+         with the accent. -->
+    <Style x:Key="MhTabControl" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0,10,0,0" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border BorderBrush="{StaticResource MhLineBrush}" BorderThickness="0,0,0,1">
+                            <!-- One pixel down, so the chosen tab's underline sits on the hairline. -->
+                            <TabPanel IsItemsHost="True" Margin="0,0,0,-1"
+                                      KeyboardNavigation.TabIndex="1" Panel.ZIndex="1" />
+                        </Border>
+                        <ContentPresenter x:Name="PART_SelectedContentHost" Grid.Row="1"
+                                          ContentSource="SelectedContent"
+                                          Margin="{TemplateBinding Padding}"
+                                          KeyboardNavigation.TabNavigation="Local"
+                                          KeyboardNavigation.DirectionalNavigation="Contained"
+                                          KeyboardNavigation.TabIndex="2" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="TabControl" BasedOn="{StaticResource MhTabControl}" />
+
+    <Style x:Key="MhTabItem" TargetType="TabItem">
+        <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource MhFocusVisual}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Chrome" Background="Transparent"
+                            BorderBrush="Transparent" BorderThickness="0,0,0,2"
+                            Padding="{TemplateBinding Padding}" Margin="0,0,4,0" SnapsToDevicePixels="True">
+                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource MhAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="TabItem" BasedOn="{StaticResource MhTabItem}" />
+
+    <!-- ===== progress ===== -->
+
+    <!-- A thin rounded bar. PART_Track and PART_Indicator are the two names WPF
+         looks for to size the filled part. When there is no amount to show
+         (IsIndeterminate) a short piece runs along the track instead. -->
+    <Style x:Key="MhProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="{x:Static ui:MhTheme.BarHeight}" />
+        <Setter Property="Background" Value="{StaticResource MhSurfacePressedBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhAccentBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid ClipToBounds="True">
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}"
+                                CornerRadius="{x:Static ui:MhTheme.SmallCorner}" />
+                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                Background="{TemplateBinding Foreground}"
+                                CornerRadius="{x:Static ui:MhTheme.SmallCorner}" />
+                        <Border x:Name="Runner" Width="90" HorizontalAlignment="Left" Visibility="Collapsed"
+                                Background="{TemplateBinding Foreground}"
+                                CornerRadius="{x:Static ui:MhTheme.SmallCorner}">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="RunnerShift" X="-90" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsIndeterminate" Value="True">
+                            <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Runner" Property="Visibility" Value="Visible" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="Run">
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="RunnerShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         From="-90" To="700" Duration="0:0:1.8" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="Run" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ProgressBar" BasedOn="{StaticResource MhProgressBar}" />
+
+    <!-- ===== trees ===== -->
+
+    <!-- A tree keeps Windows' own rows - the arrows and the indenting are theirs -
+         and only what a chosen row looks like is changed: those rows ask for
+         the system's highlight colours by key, and here the keys are answered
+         with ours. -->
+    <Style x:Key="MhTreeView" TargetType="TreeView">
+        <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="{x:Static ui:MhTheme.Selection}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{x:Static ui:MhTheme.Text}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{x:Static ui:MhTheme.Selection}" />
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="{x:Static ui:MhTheme.Text}" />
+        </Style.Resources>
+        <Setter Property="Background" Value="{StaticResource MhSurfaceBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MhControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style TargetType="TreeView" BasedOn="{StaticResource MhTreeView}" />
+
+    <!-- ===== text ===== -->
+
+    <!-- The name of a part of the window. -->
+    <Style x:Key="MhSectionText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{x:Static ui:MhTheme.SectionFontSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+    </Style>
+
+    <!-- The line that leads a block: a person's name. -->
+    <Style x:Key="MhLeadText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{x:Static ui:MhTheme.LeadFontSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+    </Style>
+
+    <!-- A name within a part: a tool, a field group. -->
+    <Style x:Key="MhStrongText" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+    </Style>
+
+    <!-- Second-rank text: what something does, a hint. -->
+    <Style x:Key="MhMutedText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- The words beside a field: "Output folder", "IFC version". -->
+    <Style x:Key="MhFieldLabel" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource MhTextMutedBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
+    <!-- Values to be read exactly or copied: versions, paths, log lines. -->
+    <Style x:Key="MhMonoText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{x:Static ui:MhTheme.MonoFont}" />
+        <Setter Property="FontSize" Value="{x:Static ui:MhTheme.SmallFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource MhTextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- ===== areas ===== -->
+
+    <!-- A set-back area: a note, read-only details, options that belong together. -->
+    <Style x:Key="MhNotePanel" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource MhSurfaceSunkenBrush}" />
+        <Setter Property="CornerRadius" Value="{x:Static ui:MhTheme.PanelCorner}" />
+        <Setter Property="Padding" Value="12,8" />
+    </Style>
+
+    <!-- A hairline between two parts of a window. -->
+    <Style x:Key="MhDivider" TargetType="Border">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{StaticResource MhLineBrush}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+</ResourceDictionary>
