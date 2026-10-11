@@ -49,7 +49,7 @@ namespace MHToolsN.Commands
         }
 
         /// <summary>Shows a dialog owned by the Navisworks main window, so it stays in front of it.</summary>
-        private static void ShowOwned(Window window)
+        internal static void ShowOwned(Window window)
         {
             IntPtr owner = IntPtr.Zero;
             try

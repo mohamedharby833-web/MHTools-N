@@ -23,18 +23,64 @@ namespace MHToolsN
         Icon = "ExportResults16.png",
         LargeIcon = "ExportResults32.png",
         ToolTip = "Export clash results to Excel and a PDF report")]
+    [Command("MHToolsN.AgentBridge",
+        Icon = "AgentBridge16.png",
+        LargeIcon = "AgentBridge32.png",
+        ToolTip = "Start or stop the Agent Bridge: lets a connected AI app (Claude, Cursor, Codex...) see and work with this Navisworks")]
+    [Command("MHToolsN.TrustedCode",
+        Icon = "TrustedCode16.png",
+        LargeIcon = "TrustedCode32.png",
+        ToolTip = "Allow connected AI apps to run generated C# in this Navisworks (off by default)")]
+    [Command("MHToolsN.ConnectAi",
+        Icon = "ConnectAi16.png",
+        LargeIcon = "ConnectAi32.png",
+        ToolTip = "Find the AI apps on this PC and connect the Agent Bridge to them in one click")]
     [Command("MHToolsN.About",
         Icon = "About16.png",
         LargeIcon = "About32.png",
         ToolTip = "About MHTools-N")]
     public class App : CommandHandlerPlugin
     {
+        /// <summary>
+        /// Agent Bridge and Trusted C# show their state on the ribbon: pressed and
+        /// "On" while they are on. Navisworks asks this whenever it redraws the ribbon.
+        /// </summary>
+        public override CommandState CanExecuteCommand(string name)
+        {
+            var state = new CommandState(true);
+            try
+            {
+                if (name == "MHToolsN.AgentBridge")
+                {
+                    state.IsChecked = Commands.AgentBridgeCommand.IsRunning;
+                    state.OverrideDisplayName = Commands.AgentBridgeCommand.IsRunning ? "Agent Bridge On" : "Agent Bridge Off";
+                }
+                else if (name == "MHToolsN.TrustedCode")
+                {
+                    string mode = Commands.AgentBridgeCommand.CodeModeName;
+                    state.IsChecked = mode != "off";
+                    state.OverrideDisplayName = mode == "ask" ? "Trusted C# On (Ask)" : mode == "auto" ? "Trusted C# On (Auto)" : "Trusted C# Off";
+                }
+            }
+            catch (Exception) { }
+            return state;
+        }
+
         public override int ExecuteCommand(string name, params string[] parameters)
         {
             try
             {
                 switch (name)
                 {
+                    case "MHToolsN.AgentBridge":
+                        Commands.AgentBridgeCommand.Toggle(parameters);
+                        break;
+                    case "MHToolsN.TrustedCode":
+                        Commands.AgentBridgeCommand.TrustedCode(parameters);
+                        break;
+                    case "MHToolsN.ConnectAi":
+                        Commands.AgentBridgeCommand.ConnectAi(parameters);
+                        break;
                     case "MHToolsN.ClashMatrix":
                         Commands.ClashMatrixCommand.Run(parameters);
                         break;

@@ -28,6 +28,22 @@ Turns an Excel clash matrix into Navisworks Clash Detective tests:
   Generate XML      Writes the Navisworks clash-test exchange file for
                     Clash Detective > Batch > Import.
 
+AI Bridge - connect an AI app (Claude, Cursor, Codex...) to Navisworks:
+
+  Agent Bridge      Starts or stops the bridge for this Navisworks. The button
+                    reads "Agent Bridge On" while it runs; it stops when you
+                    click it again or close Navisworks.
+
+  Trusted C#        Off by default. When on, connected AI apps may run C# they
+                    write themselves (Ask: you keep or undo each change; Auto).
+
+  Connect AI App    Finds the AI apps on this PC and adds the bridge to the
+                    one you pick, in one click (a copy of its settings is kept
+                    first). Then restart that AI app.
+
+  The bridge server is part of this installer (Contents\Server); nothing else
+  has to be installed - no Python, no Node, no .NET.
+
 Installing
 ----------
 1. Close Navisworks first. If Navisworks is open the installer stops with a
@@ -35,7 +51,7 @@ Installing
    Navisworks for you.
 2. Double-click the MSI. No administrator rights are needed.
 3. Start Navisworks. An MHTools-N tab appears with Clash Matrix, Export
-   Results and About.
+   Results, the AI Bridge panel and About.
 
 Installing a newer (or the same) version replaces the one already there.
 

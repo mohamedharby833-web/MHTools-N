@@ -7,6 +7,9 @@ The Navisworks sibling of MHTools-R (Revit), by Mohamed Ali Harby. It adds an
   into Navisworks **Clash Detective** tests, in one click. No more pasting the matrix
   into an AI chat and importing a hand-made XML.
 - **Export Results** — clash results to Excel and an A4 PDF report.
+- **AI Bridge** — **Agent Bridge**, **Trusted C#** and **Connect AI App**: an MCP
+  server so an AI app (Claude Desktop, Claude Code, Cursor, Codex...) can work with
+  the open Navisworks. See [Agent Bridge](#agent-bridge).
 - **About**.
 
 **Renamed in 2.0.0.** Up to 1.8.3 the add-in was called *ClashMatrix*
@@ -299,6 +302,42 @@ and file, Layer Name, Status, Priority, Distance, dates and people in the clash 
 Clash Point, Comments and a long Description on a line under the items). Pictures (*Image*) take a moment
 per clash; for more than 400 clashes the add-in asks first, and Cancel on the progress
 bar stops.
+
+### Agent Bridge
+
+The Navisworks counterpart of MHTools-R's Agent Bridge: an **MCP server** that an AI
+app starts, talking to the add-in inside Navisworks over a named pipe.
+
+```
+AI app ──MCP (stdio)──► MHTools-N.AgentServer.exe ──named pipe──► MHTools-N add-in ──► Navisworks UI thread
+```
+
+- **Agent Bridge** (ribbon, panel *AI Bridge*) starts it for this Navisworks: a
+  session file in `%LocalAppData%\MHTools-N\sessions` (readable by this Windows user
+  only - it holds the pipe's token) and a pipe only this user can open. The button
+  reads **Agent Bridge On** while it runs; it stops again on a second click or when
+  Navisworks closes.
+- **Trusted C#** starts **Off** every time, as in MHTools-R. *Ask* or *Auto* switches it
+  on, until it is switched off, the bridge stops or Navisworks closes. (Running C# is a
+  later step; the switch and its state are there now.)
+- **Connect AI App** lists the AI apps found on the PC (installed programs, Store apps,
+  commands on PATH, settings folders) and adds the bridge to Claude Desktop, Claude
+  Code, Cursor or Codex in one click, as the entry **`mhtools-n-bridge`**. The app's
+  settings file is backed up first (`.bak-<date>` beside it) and nothing else in it
+  changes - MHTools-R's `mhtools-r-bridge` stays as it is. For other MCP apps it puts
+  the entry on the clipboard in that app's format.
+- The **server** is `MHTools-N.bundle\Contents\Server\MHTools-N.AgentServer.exe`,
+  published self-contained by the MSI build: no Python, Node or .NET to install. It
+  logs to `%LocalAppData%\MHTools-N\AgentServer.log`.
+- **Navisworks' API runs on its UI thread only.** Each request is posted there with a
+  deadline (20 s). If Navisworks has not *started* it by then (a dialog open, a long
+  command), it is dropped and never runs - the AI is told Navisworks is busy and
+  nothing was done. If it started but has not finished, the AI gets an operation id
+  to poll with `get_execution`. (Idea from NavisCoord, HorizunGroup, MIT.)
+
+Tools so far: `list_navisworks_sessions`, `get_context` (the file, units, appended
+models, selection, saved sets and viewpoints, clash tests, Trusted C# state) and
+`get_execution`. With one Navisworks running, `sessionId` can be left empty.
 
 ### About
 

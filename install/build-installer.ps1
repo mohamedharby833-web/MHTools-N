@@ -114,7 +114,9 @@ New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 # Exactly these files, never "whatever is in bin". Navisworks provides its own API
 # DLLs at runtime, so they are not copied. The ribbon XAML and icons are loaded by
 # filename from the plugin folder.
-$icons     = @('ClashMatrix16.png', 'ClashMatrix32.png', 'ExportResults16.png', 'ExportResults32.png', 'About16.png', 'About32.png')
+$icons     = @('ClashMatrix16.png', 'ClashMatrix32.png', 'ExportResults16.png', 'ExportResults32.png',
+               'AgentBridge16.png', 'AgentBridge32.png', 'TrustedCode16.png', 'TrustedCode32.png',
+               'ConnectAi16.png', 'ConnectAi32.png', 'About16.png', 'About32.png')
 $shipFiles = @('MHTools-N.dll', 'AddinRibbon.xaml') + $icons
 
 foreach ($year in $targets.Keys) {
@@ -154,6 +156,24 @@ $manifest = [regex]::Replace($manifest, '(?<![A-Za-z])(FriendlyVersion|AppVersio
 Set-Content (Join-Path $bundleDir 'PackageContents.xml') -Value $manifest -Encoding UTF8
 
 Copy-Item (Join-Path $installerDir 'readme.txt') (Join-Path $bundleDir 'Contents\readme.txt')
+
+# ------------------------------------------------------ Agent Bridge server --
+# The MCP server AI apps start: Contents\Server\MHTools-N.AgentServer.exe, one
+# file for every Navisworks year. Self-contained, so no .NET has to be installed.
+# IncludeAllContentForSelfExtract: the exe unpacks itself at its first start and
+# runs from that copy, so an update can replace the exe while AI apps keep
+# servers running (see ExtractionCleanup.cs for the clean-up of old copies).
+Write-Host '  publishing the Agent Bridge server ...' -ForegroundColor DarkGray
+$serverProject = Join-Path $rootDir 'src\MHToolsN.AgentServer\MHToolsN.AgentServer.csproj'
+$serverDir     = Join-Path $bundleDir 'Contents\Server'
+& dotnet publish $serverProject -c Release -r win-x64 --self-contained true `
+    -p:PublishSingleFile=true -p:IncludeAllContentForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:Version=$version `
+    -o $serverDir --nologo -v minimal
+if ($LASTEXITCODE -ne 0) { throw 'Publishing the Agent Bridge server failed.' }
+if (-not (Test-Path (Join-Path $serverDir 'MHTools-N.AgentServer.exe'))) {
+    throw 'MHTools-N.AgentServer.exe missing from the server publish output.'
+}
 
 # ------------------------------------------------------- generate Files.wxs --
 Write-Host '  generating Files.wxs ...' -ForegroundColor DarkGray

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Agent Bridge's MCP server for Navisworks: an AI app (Claude, Cursor,
+    Codex...) starts this exe and talks MCP to it over stdin/stdout; it talks to
+    the MHTools-N add-in inside Navisworks over the bridge's named pipe.
+
+    Built like MHTools-R's MHTools.AgentServer: published self-contained (no .NET
+    to install on the PC). The same exe also edits the AI apps' settings for the
+    add-in's Connect AI App window (dash-dash apps / connect / disconnect), so the
+    add-in itself needs no JSON library.
+
+    install\build-installer.ps1 publishes it into
+    MHTools-N.bundle\Contents\Server with the add-in's version. Not part of the
+    Navisworks build.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>MHTools-N.AgentServer</AssemblyName>
+    <RootNamespace>MHToolsN.AgentServer</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Version>2.1.0</Version>
+    <Company>Mohamed Ali Harby</Company>
+    <Copyright>Copyright (c) 2026 Mohamed Ali Harby. MIT licence.</Copyright>
+    <Product>MHTools-N</Product>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+
+</Project>

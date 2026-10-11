@@ -1,0 +1,66 @@
+<Window x:Class="MHToolsN.UI.ConnectAiWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:MHToolsN.UI"
+        Title="MHTools-N - Connect AI App"
+        Width="640" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <!--
+        The look comes from UI/MhTheme.cs and UI/Theme.xaml (MhTheme.Apply in the
+        code-behind), hence DynamicResource. The rows are built in the code-behind
+        from the bridge server's scan of the PC: one per AI app found, then "Other app".
+        Ported from MHTools-R's Connect AI window.
+    -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:MhHeader x:Name="Header" Grid.Row="0" Title="Connect AI App"
+                     Subtitle="The AI apps found on this PC, and how each can use the Navisworks Agent Bridge." />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="20,16,20,16">
+
+                <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,12"
+                           Text="Connect adds the MHTools-N bridge to an app's list of MCP servers, and Disconnect takes it out; nothing else in the app's settings changes (MHTools-R's Revit bridge, if there, stays as it is), and a copy of the settings file is kept first. For apps that cannot be set up from here, Copy settings puts the entry on the clipboard, in that app's own format, ready to paste." />
+
+                <StackPanel x:Name="Rows" />
+
+                <Border Style="{DynamicResource MhNotePanel}" Margin="0,8,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{DynamicResource MhStrongText}" Text="Bridge server" />
+                            <TextBlock x:Name="ServerText" Style="{DynamicResource MhMonoText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Text="The program an AI app starts to reach Navisworks - this is what goes into the app's settings. In Navisworks, Agent Bridge must also be On for the app to see the model." />
+                        </StackPanel>
+                        <Button x:Name="CopyPathButton" Grid.Column="1" Style="{DynamicResource MhCompactButton}"
+                                Content="Copy path" VerticalAlignment="Top" Margin="12,0,0,0" Click="OnCopyPath" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <ui:MhFooter x:Name="Footer" Grid.Row="2">
+            <ui:MhFooter.Actions>
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{DynamicResource MhPrimaryButton}" Click="OnClose"
+                            Content="Close" IsCancel="True" Margin="0,0,8,0" />
+                    <Button Click="OnRescan" Content="Rescan"
+                            ToolTip="Look again - after installing an AI app, say." />
+                </StackPanel>
+            </ui:MhFooter.Actions>
+        </ui:MhFooter>
+    </Grid>
+</Window>

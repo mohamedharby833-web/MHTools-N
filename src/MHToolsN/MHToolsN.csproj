@@ -28,7 +28,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Company>Mohamed Ali Harby</Company>
     <Product>MHTools-N</Product>
     <Copyright>Copyright Â© 2026</Copyright>
@@ -153,6 +153,8 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
 
   <!-- ============ Ribbon XAML + icons: flatten to the plugin folder root ============
@@ -165,6 +167,12 @@
     <None Include="Resources\ExportResults32.png" CopyToOutputDirectory="PreserveNewest" Link="ExportResults32.png" />
     <None Include="Resources\About16.png" CopyToOutputDirectory="PreserveNewest" Link="About16.png" />
     <None Include="Resources\About32.png" CopyToOutputDirectory="PreserveNewest" Link="About32.png" />
+    <None Include="Resources\AgentBridge16.png" CopyToOutputDirectory="PreserveNewest" Link="AgentBridge16.png" />
+    <None Include="Resources\AgentBridge32.png" CopyToOutputDirectory="PreserveNewest" Link="AgentBridge32.png" />
+    <None Include="Resources\TrustedCode16.png" CopyToOutputDirectory="PreserveNewest" Link="TrustedCode16.png" />
+    <None Include="Resources\TrustedCode32.png" CopyToOutputDirectory="PreserveNewest" Link="TrustedCode32.png" />
+    <None Include="Resources\ConnectAi16.png" CopyToOutputDirectory="PreserveNewest" Link="ConnectAi16.png" />
+    <None Include="Resources\ConnectAi32.png" CopyToOutputDirectory="PreserveNewest" Link="ConnectAi32.png" />
   </ItemGroup>
 
   <!-- ============ Built-in clash standard ============

@@ -33,6 +33,36 @@
             </RibbonPanelSource>
         </RibbonPanel>
 
+        <RibbonPanel x:Uid="RibbonPanel_AiBridge">
+            <RibbonPanelSource x:Uid="RibbonPanelSource_AiBridge" KeyTip="B1" Title="AI Bridge">
+
+                <local:NWRibbonButton x:Uid="MHToolsN Agent Bridge" Id="MHToolsN.AgentBridge"
+                            Size="Large"
+                            KeyTip="B"
+                            ShowText="True"
+                            Text="Agent Bridge"
+                            Orientation="Vertical"
+                />
+
+                <local:NWRibbonButton x:Uid="MHToolsN Trusted Code" Id="MHToolsN.TrustedCode"
+                            Size="Large"
+                            KeyTip="T"
+                            ShowText="True"
+                            Text="Trusted C#"
+                            Orientation="Vertical"
+                />
+
+                <local:NWRibbonButton x:Uid="MHToolsN Connect AI" Id="MHToolsN.ConnectAi"
+                            Size="Large"
+                            KeyTip="I"
+                            ShowText="True"
+                            Text="Connect AI App"
+                            Orientation="Vertical"
+                />
+
+            </RibbonPanelSource>
+        </RibbonPanel>
+
         <RibbonPanel x:Uid="RibbonPanel_Help">
             <RibbonPanelSource x:Uid="RibbonPanelSource_Help" KeyTip="H1" Title="Help">
 
