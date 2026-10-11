@@ -39,7 +39,7 @@ string input = args[0];
 string output = args.Length > 1
     ? args[1]
     : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
-        "src", "ClashMatrix", "Resources", "ClashStandard.tsv"));
+        "src", "MHToolsN", "Resources", "ClashStandard.tsv"));
 
 // Workbook spelling -> Revit category name.
 var rename = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)

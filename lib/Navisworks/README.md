@@ -14,14 +14,14 @@ its own version.
 ## Normal build (recommended)
 
 The project references the API through the **`Speckle.Navisworks.API`** NuGet
-package, pinned per year in `ClashMatrix.csproj` (`NavisApiVersion`). Each year's DLLs
+package, pinned per year in `MHToolsN.csproj` (`NavisApiVersion`). Each year's DLLs
 are restored from NuGet, so **no Navisworks install is needed** to build any year.
 This is the same idea as MH Tools' `Nice3point.Revit.Api` packages.
 
 ## Offline fallback
 
 If a build machine has **no NuGet access**, comment the `PackageReference` in
-`ClashMatrix.csproj` and uncomment the `<Reference>` block there. It resolves against
+`MHToolsN.csproj` and uncomment the `<Reference>` block there. It resolves against
 `$(NavisworksPath)`, which falls back to this folder when the DLLs are present.
 
 Copy the four API assemblies for a year into that year's folder here:

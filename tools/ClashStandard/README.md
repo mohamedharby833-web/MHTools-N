@@ -1,6 +1,6 @@
 # ClashStandard
 
-Generates `src/ClashMatrix/Resources/ClashStandard.tsv`, the built-in clash
+Generates `src/MHToolsN/Resources/ClashStandard.tsv`, the built-in clash
 standard embedded in the add-in. **Scan Model** uses it to give each default
 clash test (one per Revit category pair) its priority and tolerance.
 

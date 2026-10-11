@@ -1,7 +1,23 @@
-# Clash Matrix — Navisworks add-in
+# MHTools-N — Navisworks add-in
 
-Turns an Excel **clash matrix** into Navisworks **Clash Detective** tests, in one
-click. No more pasting the matrix into an AI chat and importing a hand-made XML.
+The Navisworks sibling of MHTools-R (Revit), by Mohamed Ali Harby. It adds an
+**MHTools-N** ribbon tab to Navisworks Manage 2024–2027 with:
+
+- **Clash Matrix** — turns an Excel **clash matrix** (or the model's own categories)
+  into Navisworks **Clash Detective** tests, in one click. No more pasting the matrix
+  into an AI chat and importing a hand-made XML.
+- **Export Results** — clash results to Excel and an A4 PDF report.
+- **About**.
+
+**Renamed in 2.0.0.** Up to 1.8.3 the add-in was called *ClashMatrix*
+(`ClashMatrix-x.msi`, `ClashMatrix.bundle`). Installing `MHTools-N-2.0.0.msi`
+replaces it (same upgrade code), and the settings in `%AppData%\ClashMatrix` are
+copied to `%AppData%\MHTools-N` the first time they are needed. What did **not**
+change, on purpose: the **Clash Matrix** button and window, and the **`Clash Matrix`
+folder of search sets inside your models** — renaming that folder would make the
+add-in lose track of the tests it created.
+
+## Clash Matrix
 
 The search sets the add-in creates live in a **`Clash Matrix` folder** in the
 *Sets* window. Clash Detective has no test folders, so the tests sit at the top
@@ -26,7 +42,7 @@ configurations, all on **.NET Framework 4.8** (the Navisworks .NET API has staye
   ICT devices: those go to ICT, the rest to EL) and **MEP** (one file with all
   services: MEC / EL / ICT).
   The discipline is guessed and shown in the **Models** table, where it can be changed
-  (the choice is remembered per file name, in `%AppData%\ClashMatrix\ModelDisciplines.txt`).
+  (the choice is remembered per file name, in `%AppData%\MHTools-N\ModelDisciplines.txt`).
   A word in the file name decides (ARCH, STR, MECH, ELEC, ICT, ELV, MEP, ...); a
   one-letter role code (`…-1A0-…` AR, `…-1S0-…` ST, `…-1M0-…` MEC, `…-1EA-…` EL) only
   when the file's content agrees, since a letter like the D of `1DS` can mean
@@ -118,7 +134,7 @@ clash standard**, a clash detection matrix embedded in the add-in:
   Folded categories count with their parent (Pipes includes Pipe Fittings,
   Accessories, Insulations and Flex Pipes).
 
-The standard lives in `src/ClashMatrix/Resources/ClashStandard.tsv`; regenerate it
+The standard lives in `src/MHToolsN/Resources/ClashStandard.tsv`; regenerate it
 with `tools/ClashStandard` when the source workbook changes (see its README).
 
 ### Exported workbook
@@ -139,7 +155,7 @@ the same way MH Tools builds for every Revit year. No Visual Studio is strictly
 required; `dotnet build` works.
 
 ```
-dotnet build src\ClashMatrix\ClashMatrix.csproj -c "Release N27"
+dotnet build src\MHToolsN\MHToolsN.csproj -c "Release N27"
 ```
 
 | Configuration | Navisworks | Framework |
@@ -167,7 +183,7 @@ Navisworks loads .NET plugins from an Autodesk **ApplicationPlugins bundle** —
 is no `.addin` manifest. Install per-user (no admin rights) to:
 
 ```
-%AppData%\Autodesk\ApplicationPlugins\ClashMatrix.bundle\
+%AppData%\Autodesk\ApplicationPlugins\MHTools-N.bundle\
     PackageContents.xml
     Contents\
         21\ ...   Navisworks 2024 (N24 build)
@@ -179,7 +195,7 @@ is no `.addin` manifest. Install per-user (no admin rights) to:
 Each `Contents\<NN>` folder holds the four build outputs for that release:
 
 ```
-    ClashMatrix.dll
+    MHTools-N.dll
     AddinRibbon.xaml
     ClashMatrix16.png
     ClashMatrix32.png
@@ -190,7 +206,7 @@ Each `Contents\<NN>` folder holds the four build outputs for that release:
 
 `PackageContents.xml` lives at `install\PackageContents.xml`; it already lists all
 four releases (`Nw21`..`Nw24`). The build output for release `NN` is
-`src\ClashMatrix\bin\<year>\`.
+`src\MHToolsN\bin\<year>\`.
 
 Restart Navisworks. An **MHTools-N** tab appears with **Clash Matrix** and **Export
 Results** (panel *Clash*) and **About** (panel *Help*).
@@ -290,7 +306,7 @@ bar stops.
 with links to the author's profile and to the log file.
 
 Long operations show the Navisworks progress bar and can be cancelled. A
-diagnostic log is written to `%TEMP%\ClashMatrix_Log.txt`.
+diagnostic log is written to `%TEMP%\MHTools-N_Log.txt`.
 
 > **Upgrading from 1.0:** 1.0 created plain (static) sets at the root of the Sets
 > window and replaced *every* clash test. 1.1 leaves those old sets alone, and its
@@ -303,8 +319,8 @@ diagnostic log is written to `%TEMP%\ClashMatrix_Log.txt`.
 ## Layout
 
 ```
-ClashMatrix.sln
-src/ClashMatrix/
+MHTools-N.sln
+src/MHToolsN/
   App.cs                              plugin entry + [Command] wiring
   Ribbon/AddinRibbon.xaml             ribbon tab/button definition
   Resources/ClashMatrix16.png         16px + 32px ribbon icons

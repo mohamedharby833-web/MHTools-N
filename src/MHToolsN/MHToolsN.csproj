@@ -1,0 +1,220 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    One project, four Navisworks Manage versions. All four target .NET Framework 4.8
+    (the Navisworks .NET API has stayed on .NET Framework 4.8 through 2027).
+
+        Debug N24 / Release N24  ->  Navisworks Manage 2024
+        Debug N25 / Release N25  ->  Navisworks Manage 2025
+        Debug N26 / Release N26  ->  Navisworks Manage 2026
+        Debug N27 / Release N27  ->  Navisworks Manage 2027
+
+    "Batch Build" (Build > Batch Build in Visual Studio) builds all four at once.
+
+    The Navisworks API comes from a NuGet package (Speckle.Navisworks.API) that
+    ships each year's DLLs, so any configuration builds without that Navisworks
+    release installed - the same way MH Tools builds for every Revit year.
+  -->
+
+  <PropertyGroup>
+    <Configurations>Debug N24;Debug N25;Debug N26;Debug N27;Release N24;Release N25;Release N26;Release N27</Configurations>
+    <Platforms>x64</Platforms>
+    <AssemblyName>MHTools-N</AssemblyName>
+    <RootNamespace>MHToolsN</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <Version>2.0.0</Version>
+    <Company>Mohamed Ali Harby</Company>
+    <Product>MHTools-N</Product>
+    <Copyright>Copyright Â© 2026</Copyright>
+    <NoWarn>$(NoWarn);MSB3277;NU1701</NoWarn>
+  </PropertyGroup>
+
+  <!-- ============ Per-Navisworks-version settings ============ -->
+
+  <!--
+    NavisApiVersion pins the Speckle.Navisworks.API package for each year (the
+    package ships that year's API DLLs under lib/net48, so the year builds without
+    Navisworks installed). Raise the number here when a newer update ships.
+  -->
+  <PropertyGroup Condition="$(Configuration.Contains('N24'))">
+    <NavisVersion>2024</NavisVersion>
+    <NavisApiVersion>2024.0.0</NavisApiVersion>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('N25'))">
+    <NavisVersion>2025</NavisVersion>
+    <NavisApiVersion>2025.0.0</NavisApiVersion>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('N26'))">
+    <NavisVersion>2026</NavisVersion>
+    <NavisApiVersion>2026.0.1</NavisApiVersion>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('N27'))">
+    <NavisVersion>2027</NavisVersion>
+    <NavisApiVersion>2027.0.0</NavisApiVersion>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Fallback so a plain "Debug"/"Release" build (or design-time evaluation) still resolves. -->
+  <PropertyGroup Condition="'$(NavisVersion)' == ''">
+    <NavisVersion>2027</NavisVersion>
+    <NavisApiVersion>2027.0.0</NavisApiVersion>
+    <TargetFramework>net48</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>$(DefineConstants);DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(Configuration.Contains('Release'))">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);NAVIS$(NavisVersion)</DefineConstants>
+    <OutputPath>bin\$(NavisVersion)\</OutputPath>
+    <!--
+      NavisworksPath is used for the F5 launch and for the no-NuGet <Reference>
+      fallback further down. It resolves to:
+        1. -p:NavisworksPath=... passed on the command line
+        2. the repo-local lib\Navisworks\<year> folder, when someone has dropped that
+           year's API DLLs there
+        3. the local Navisworks Manage install
+    -->
+    <RepoApiPath>$(MSBuildProjectDirectory)\..\..\lib\Navisworks\$(NavisVersion)</RepoApiPath>
+    <NavisworksPath Condition="'$(NavisworksPath)' == '' AND Exists('$(RepoApiPath)\Autodesk.Navisworks.Api.dll')">$(RepoApiPath)</NavisworksPath>
+    <NavisworksPath Condition="'$(NavisworksPath)' == ''">C:\Program Files\Autodesk\Navisworks Manage $(NavisVersion)</NavisworksPath>
+  </PropertyGroup>
+
+  <!-- ============ .NET Framework 4.8 reference assemblies (no local targeting pack needed) ============ -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- ============ Navisworks API references ============
+
+    Default: NuGet. Speckle.Navisworks.API ships every year's API DLLs under
+    lib/net48 (Autodesk.Navisworks.Api, Autodesk.Navisworks.Clash, AdWindows,
+    navisworks.gui.roamer), so a year builds with no Navisworks install.
+    ExcludeAssets=runtime keeps them out of the output folder - Navisworks provides
+    its own copies at runtime, and a stray copy next to MHTools-N.dll would
+    shadow and conflict with them.
+
+    If this machine has no NuGet access, comment the PackageReference below and
+    uncomment the <Reference> block - it points at the local install (or a
+    repo-local lib\Navisworks\<year> folder) via $(NavisworksPath). -->
+  <ItemGroup>
+    <PackageReference Include="Speckle.Navisworks.API" Version="$(NavisApiVersion)" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!--
+  <ItemGroup>
+    <Reference Include="Autodesk.Navisworks.Api">
+      <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Api.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Autodesk.Navisworks.Clash">
+      <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Clash.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>$(NavisworksPath)\AdWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="navisworks.gui.roamer">
+      <HintPath>$(NavisworksPath)\navisworks.gui.roamer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  -->
+
+  <!-- ============ WPF + xlsx reading (in-box for .NET Framework) ============
+    System.IO.Compression is not referenced by default in SDK-style net48
+    projects; the xlsx reader uses ZipArchive/ZipFile from it. -->
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <!-- ============ Ribbon XAML + icons: flatten to the plugin folder root ============
+    Navisworks loads the ribbon XAML and icon PNGs by filename from the plugin folder. -->
+  <ItemGroup>
+    <None Include="Ribbon\AddinRibbon.xaml" CopyToOutputDirectory="PreserveNewest" Link="AddinRibbon.xaml" />
+    <None Include="Resources\ClashMatrix16.png" CopyToOutputDirectory="PreserveNewest" Link="ClashMatrix16.png" />
+    <None Include="Resources\ClashMatrix32.png" CopyToOutputDirectory="PreserveNewest" Link="ClashMatrix32.png" />
+    <None Include="Resources\ExportResults16.png" CopyToOutputDirectory="PreserveNewest" Link="ExportResults16.png" />
+    <None Include="Resources\ExportResults32.png" CopyToOutputDirectory="PreserveNewest" Link="ExportResults32.png" />
+    <None Include="Resources\About16.png" CopyToOutputDirectory="PreserveNewest" Link="About16.png" />
+    <None Include="Resources\About32.png" CopyToOutputDirectory="PreserveNewest" Link="About32.png" />
+  </ItemGroup>
+
+  <!-- ============ Built-in clash standard ============
+    Priority + tolerance per Revit category pair, applied by Scan Model.
+    Generated from a clash matrix workbook by tools\ClashStandard (see its README). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ClashStandard.tsv" LogicalName="MHToolsN.Resources.ClashStandard.tsv" />
+  </ItemGroup>
+
+  <!-- ============ Launch Navisworks on F5 (Debug configurations) ============ -->
+  <PropertyGroup Condition="$(Configuration.Contains('Debug'))">
+    <StartAction>Program</StartAction>
+    <StartProgram>$(NavisworksPath)\Roamer.exe</StartProgram>
+  </PropertyGroup>
+
+  <!-- ============ Auto-deploy to the per-user bundle (Debug only) ============
+    Navisworks loads plugins from the Autodesk ApplicationPlugins bundle:
+      %AppData%\Autodesk\ApplicationPlugins\MHTools-N.bundle\
+    No admin rights needed.
+
+    The bundle's PackageContents.xml (install\PackageContents.xml) lists every
+    Navisworks release; this target only drops the DLL/XAML/icons for the version
+    being built into Contents\<NN> (NN = year - 2003). -->
+  <Target Name="DeployToNavisworks" AfterTargets="Build" Condition="$(Configuration.Contains('Debug')) AND '$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <NavisNn>$([MSBuild]::Subtract($(NavisVersion), 2003))</NavisNn>
+      <BundleDir>$([System.Environment]::GetFolderPath(SpecialFolder.ApplicationData))\Autodesk\ApplicationPlugins\MHTools-N.bundle</BundleDir>
+      <ContentsDir>$(BundleDir)\Contents\$(NavisNn)</ContentsDir>
+      <ManifestSource>$(MSBuildProjectDirectory)\..\..\install\PackageContents.xml</ManifestSource>
+    </PropertyGroup>
+    <MakeDir Directories="$(ContentsDir)" ContinueOnError="WarnAndContinue" />
+    <MakeDir Directories="$(ContentsDir)\en-US" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="$(ManifestSource)" DestinationFiles="$(BundleDir)\PackageContents.xml" ContinueOnError="WarnAndContinue" />
+    <ItemGroup>
+      <DeployFiles Include="$(TargetDir)*.dll" />
+      <DeployFiles Include="$(TargetDir)*.pdb" />
+      <DeployFiles Include="$(TargetDir)AddinRibbon.xaml" />
+      <DeployFiles Include="$(TargetDir)ClashMatrix16.png" />
+      <DeployFiles Include="$(TargetDir)ClashMatrix32.png" />
+      <DeployFiles Include="$(TargetDir)ExportResults*.png" />
+      <DeployFiles Include="$(TargetDir)About*.png" />
+      <LocaleFiles Include="$(TargetDir)AddinRibbon.xaml" />
+      <LocaleFiles Include="$(TargetDir)ClashMatrix16.png" />
+      <LocaleFiles Include="$(TargetDir)ClashMatrix32.png" />
+      <LocaleFiles Include="$(TargetDir)ExportResults*.png" />
+      <LocaleFiles Include="$(TargetDir)About*.png" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ContentsDir)" ContinueOnError="WarnAndContinue" />
+    <Copy SourceFiles="@(LocaleFiles)" DestinationFolder="$(ContentsDir)\en-US" ContinueOnError="WarnAndContinue" />
+    <Message Importance="high" Text="Deployed MHTools-N for Navisworks $(NavisVersion) -> $(ContentsDir)" />
+  </Target>
+
+</Project>

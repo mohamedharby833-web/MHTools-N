@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds Clash Matrix for Navisworks Manage 2024, 2025, 2026 and 2027, assembles
+    Builds MHTools-N for Navisworks Manage 2024, 2025, 2026 and 2027, assembles
     the Autodesk plug-in bundle, and packages it as a per-user MSI.
 
 .DESCRIPTION
@@ -24,7 +24,7 @@
 
 .EXAMPLE
     .\build-installer.ps1 -SkipBuild
-    Repackage what is already in src\ClashMatrix\bin\<year>\ without recompiling.
+    Repackage what is already in src\MHToolsN\bin\<year>\ without recompiling.
 #>
 [CmdletBinding()]
 param(
@@ -46,9 +46,9 @@ $ErrorActionPreference = 'Stop'
 
 $installerDir = $PSScriptRoot
 $rootDir      = Split-Path -Parent $installerDir
-$projectPath  = Join-Path $rootDir 'src\ClashMatrix\ClashMatrix.csproj'
+$projectPath  = Join-Path $rootDir 'src\MHToolsN\MHToolsN.csproj'
 $stageDir     = Join-Path $installerDir 'stage'
-$bundleDir    = Join-Path $stageDir 'ClashMatrix.bundle'
+$bundleDir    = Join-Path $stageDir 'MHTools-N.bundle'
 $filesWxs     = Join-Path $installerDir 'Files.wxs'
 
 if (-not (Test-Path $projectPath)) { throw "Cannot find the project at $projectPath" }
@@ -79,7 +79,7 @@ if ($Versions) {
 $version = [regex]::Match(
     (Get-Content $projectPath -Raw), '<Version>([^<]+)</Version>').Groups[1].Value
 if (-not $version) { throw 'Could not read <Version> from the project file.' }
-Write-Host "Clash Matrix $version" -ForegroundColor Cyan
+Write-Host "MHTools-N $version" -ForegroundColor Cyan
 
 # ------------------------------------------------------------------ build ----
 $projectDir = Split-Path -Parent $projectPath
@@ -115,7 +115,7 @@ New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 # DLLs at runtime, so they are not copied. The ribbon XAML and icons are loaded by
 # filename from the plugin folder.
 $icons     = @('ClashMatrix16.png', 'ClashMatrix32.png', 'ExportResults16.png', 'ExportResults32.png', 'About16.png', 'About32.png')
-$shipFiles = @('ClashMatrix.dll', 'AddinRibbon.xaml') + $icons
+$shipFiles = @('MHTools-N.dll', 'AddinRibbon.xaml') + $icons
 
 foreach ($year in $targets.Keys) {
     $nn      = $targets[$year].Nn
@@ -130,8 +130,8 @@ foreach ($year in $targets.Keys) {
         if (Test-Path $source) { Copy-Item $source -Destination $contentsDir }
     }
 
-    if (-not (Test-Path (Join-Path $contentsDir 'ClashMatrix.dll'))) {
-        throw "ClashMatrix.dll missing from the Navisworks $year build output."
+    if (-not (Test-Path (Join-Path $contentsDir 'MHTools-N.dll'))) {
+        throw "MHTools-N.dll missing from the Navisworks $year build output."
     }
 
     # Navisworks also resolves the ribbon XAML and icons from a locale subfolder;
@@ -163,14 +163,14 @@ $script:index = 0
 
 # Per-user components cannot use a file as their KeyPath (ICE38): each one gets
 # an HKCU value instead. This key is the add-in's install record.
-$regKey = 'Software\Mohamed Ali Harby\ClashMatrix\Components'
+$regKey = 'Software\Mohamed Ali Harby\MHTools-N\Components'
 
 # A component that holds a file plus a registry KeyPath cannot have a generated
 # GUID (WIX0230). Derive one from the file's path instead: stable from build to
 # build, so an upgrade still recognises each component.
 function Get-StableGuid([string]$Text) {
     $md5 = [System.Security.Cryptography.MD5]::Create()
-    $bytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes('ClashMatrix:' + $Text.ToLowerInvariant()))
+    $bytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes('MHTools-N:' + $Text.ToLowerInvariant()))
     return (New-Object System.Guid -ArgumentList (, $bytes)).ToString().ToUpperInvariant()
 }
 
@@ -359,11 +359,11 @@ if ($add.ExitCode -eq 0) {
 }
 
 # -------------------------------------------------------------------- build --
-$msiPath = Join-Path $installerDir "ClashMatrix-$version.msi"
+$msiPath = Join-Path $installerDir "MHTools-N-$version.msi"
 
 $wixArgs = @(
     'build'
-    (Join-Path $installerDir 'ClashMatrix.wxs')
+    (Join-Path $installerDir 'MHTools-N.wxs')
     $filesWxs
     '-d'; "ProductVersion=$version"
     '-arch'; 'x64'
@@ -375,7 +375,7 @@ if ($useUI) { $wixArgs += @('-d'; 'UseUI=1'; '-ext'; $uiExtension) }
 Write-Host '  building the MSI ...' -ForegroundColor DarkGray
 
 # From the installer folder, whatever folder the script was started in: the
-# file paths in Files.wxs, and the icon and licence in ClashMatrix.wxs, are
+# file paths in Files.wxs, and the icon and licence in MHTools-N.wxs, are
 # relative to it. Started from the repository root they used to resolve against
 # that instead, and the build failed on the first file.
 Push-Location $installerDir
