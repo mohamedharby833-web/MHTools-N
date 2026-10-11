@@ -107,7 +107,7 @@ namespace MHToolsN.UI
 
             Footer.Status = found == 0
                 ? "No known AI app found on this PC."
-                : found + " AI app(s) found, " + connected + " of " + oneClick + " connected.";
+                : found + " found, " + connected + " of " + oneClick + " connected.";
         }
 
         // ------------------------------------------------------------ rows
