@@ -56,6 +56,9 @@ namespace MHToolsN.Bridge
                 case "preview_clash_matrix": return () => ChangeMethods.PreviewMatrix(host, args);
                 case "apply_clash_matrix": return () => ChangeMethods.ApplyMatrix(host, args);
 
+                // Trusted C# (ScriptRunner)
+                case "execute_code": return () => ScriptRunner.Execute(host, args);
+
                 // Quantification (TakeoffMethods)
                 case "get_takeoff_info": return () => TakeoffMethods.Info(host, args);
                 case "preview_takeoff": return () => TakeoffMethods.Preview(host, args);

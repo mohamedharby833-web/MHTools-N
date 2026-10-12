@@ -38,6 +38,7 @@ namespace MHToolsN.AgentServer
             builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Services.AddSingleton<SessionClient>();
+            builder.Services.AddSingleton<ScriptCompiler>();
             builder.Services
                 .AddMcpServer(options =>
                 {
@@ -73,6 +74,23 @@ namespace MHToolsN.AgentServer
                     case "--disconnect":
                         Print(new JsonObject { ["ok"] = true, ["afterChange"] = AiApps.Disconnect(Arg(args)) });
                         return 0;
+                    case "--compile-test":
+                    {
+                        // --compile-test <year>: compiles a small script against that installed
+                        // Navisworks, with no session - proof that a PC can compile.
+                        var endpoint = new BridgeEndpoint { processId = -1, navisworksVersion = Arg(args) };
+                        var refs = ReferenceSet.ForSession(endpoint);
+                        var compiled = ScriptCompiler.Compile(
+                            "var names = new List<string>();\nforeach (Autodesk.Navisworks.Api.Model m in doc.Models) names.Add(m.FileName);\n" +
+                            "var takeoff = Autodesk.Navisworks.Api.Takeoff.DocumentExtensions.GetTakeoff(doc);\n" +
+                            "return names.Count + \" models, takeoff \" + takeoff.HasDatabaseInitialized;", refs);
+                        Print(new JsonObject
+                        {
+                            ["ok"] = compiled.Bytes != null, ["navisworks"] = refs.NavisworksFolder, ["references"] = refs.References.Count,
+                            ["takeoff"] = refs.HasTakeoff, ["bytes"] = compiled.Bytes == null ? 0 : compiled.Bytes.Length, ["diagnostics"] = compiled.Diagnostics
+                        });
+                        return compiled.Bytes != null ? 0 : 1;
+                    }
                     case "--version":
                         Print(new JsonObject { ["ok"] = true, ["version"] = typeof(Program).Assembly.GetName().Version.ToString(3) });
                         return 0;

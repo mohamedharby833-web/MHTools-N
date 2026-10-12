@@ -23,10 +23,12 @@ namespace MHToolsN.AgentServer
         private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
         private readonly SessionClient _client;
+        private readonly ScriptCompiler _compiler;
 
-        public NavisTools(SessionClient client)
+        public NavisTools(SessionClient client, ScriptCompiler compiler)
         {
             _client = client;
+            _compiler = compiler;
         }
 
         [McpServerTool(Name = "list_navisworks_sessions", ReadOnly = true, Idempotent = true),
@@ -445,6 +447,63 @@ namespace MHToolsN.AgentServer
         public async Task<string> TakeoffSummary(CancellationToken cancellationToken, string filter = "", int limit = 200, string sessionId = "")
         {
             return await Call(sessionId, "get_takeoff_summary", new JsonObject { ["filter"] = filter, ["limit"] = limit }, cancellationToken);
+        }
+
+        // ========================================================== Trusted C#
+
+        private const string ScriptScope =
+            "In scope: doc (Autodesk.Navisworks.Api.Document, the open file), inputsJson (string), cancellationToken. " +
+            "Imports: System, System.Linq, System.Collections.Generic, System.Threading, System.IO, Autodesk.Navisworks.Api, " +
+            "Autodesk.Navisworks.Api.Clash, and when this Navisworks has Quantification Autodesk.Navisworks.Api.Takeoff and Autodesk.Navisworks.Api.Data; " +
+            "full names for anything else (Autodesk.Navisworks.Api.Application for the application). Must return a string (JSON is best). " +
+            "Navisworks 2024-2027 run .NET Framework 4.8. Navisworks collections: walk them with foreach - their CopyTo is broken " +
+            "(no ToList() / new List<T>(collection) on ModelItemCollection and the like). Lengths are in doc.Units. ";
+
+        [McpServerTool(Name = "compile_code"),
+         Description("Compile a C# method body against the Navisworks API of the session's own Navisworks, without running it. " + ScriptScope +
+                     "Returns a scriptId for execute_code, or the compiler's errors to fix.")]
+        public async Task<string> CompileCode(string code, CancellationToken cancellationToken, string sessionId = "")
+        {
+            BridgeEndpoint endpoint;
+            try { endpoint = _client.Resolve(sessionId); }
+            catch (InvalidOperationException ex) { throw new McpException(ex.Message); }
+            try { return Wire.Json(await _compiler.CompileAsync(endpoint, code, cancellationToken)); }
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is System.IO.FileNotFoundException)
+            {
+                throw new McpException(ex.Message);
+            }
+        }
+
+        [McpServerTool(Name = "execute_code"),
+         Description("Run a compiled script (scriptId from compile_code) in Navisworks, on its UI thread - for anything the other tools do not cover. " +
+                     "Needs Trusted C# on in Navisworks; in Ask mode Navisworks shows the user the code and runs it only on Yes (the call then reports " +
+                     "'running': poll get_execution; on REJECTED_BY_USER do not try again without asking). " +
+                     "wrap=true (default) runs it inside one Navisworks transaction, so the whole run is one Ctrl+Z step; wrap=false when the script " +
+                     "manages its own transactions (e.g. a Quantification database transaction). dryRun=true undoes the run right after " +
+                     "(doc.TryUndo) and reports whether the undo took - for trying a change out. A long script reports 'running' - poll get_execution. " +
+                     "Never save the file from a script (no doc.SaveFile / SaveAs). Exceptions come back with their stack. Not sandboxed.")]
+        public async Task<string> ExecuteCode(string scriptId, CancellationToken cancellationToken, string inputsJson = "{}",
+            bool wrap = true, bool dryRun = false, string sessionId = "")
+        {
+            BridgeEndpoint endpoint;
+            try { endpoint = _client.Resolve(sessionId); }
+            catch (InvalidOperationException ex) { throw new McpException(ex.Message); }
+            CompiledScript script;
+            try { script = _compiler.Resolve(scriptId, endpoint.sessionId); }
+            catch (InvalidOperationException ex) { throw new McpException(ex.Message); }
+            if ((inputsJson ?? "").Length > 65536) throw new McpException("inputsJson exceeds 64 KiB.");
+
+            return await Call(endpoint.sessionId, "execute_code", new JsonObject
+            {
+                ["assemblyBase64"] = Convert.ToBase64String(script.Assembly),
+                ["sourceHash"] = script.SourceHash,
+                ["source"] = script.Body,
+                ["typeName"] = ScriptCompiler.TypeName,
+                ["methodName"] = ScriptCompiler.MethodName,
+                ["inputsJson"] = inputsJson ?? "{}",
+                ["wrap"] = wrap,
+                ["dryRun"] = dryRun
+            }, cancellationToken);
         }
 
         // ================================================================= view

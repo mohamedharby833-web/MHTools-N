@@ -24,7 +24,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>2.4.3</Version>
+    <Version>2.5.0</Version>
     <Company>Mohamed Ali Harby</Company>
     <Copyright>Copyright (c) 2026 Mohamed Ali Harby. MIT licence.</Copyright>
     <Product>MHTools-N</Product>
@@ -35,6 +35,8 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <!-- Trusted C#: scripts are compiled here, in memory, against the Navisworks of the session. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
   </ItemGroup>
 
 </Project>

@@ -403,3 +403,15 @@ MIT - see [LICENSE](LICENSE). The installer also places `LICENSE.txt` and
 `THIRD-PARTY-NOTICES.txt` (the .NET runtime, Microsoft.Extensions and the
 ModelContextProtocol SDK inside the bridge server) in the installed bundle.
 Navisworks and Autodesk are trademarks of Autodesk, Inc.
+
+### Trusted C#
+
+For anything the bridge's tools do not cover, the AI can write C#: `compile_code`
+compiles a method body in the server, in memory, against the Navisworks API of the
+running Navisworks (read from its process: Api, Clash, Takeoff, Timeliner, ComApi) and
+.NET Framework 4.8; `execute_code` runs it on Navisworks' UI thread with `doc`,
+`inputsJson` and a cancellation token in scope. It goes through the same gate as every
+change - Trusted C# Off refuses, **Ask shows the user the code** and runs it only on
+Yes, Auto logs it. `wrap=true` makes the run one undo step; `dryRun=true` undoes it
+right after and reports whether the undo took. Not sandboxed; the file is never saved
+by the bridge. `MHTools-N.AgentServer.exe --compile-test 2027` proves a PC can compile.
