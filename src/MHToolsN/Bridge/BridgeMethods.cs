@@ -56,6 +56,12 @@ namespace MHToolsN.Bridge
                 case "preview_clash_matrix": return () => ChangeMethods.PreviewMatrix(host, args);
                 case "apply_clash_matrix": return () => ChangeMethods.ApplyMatrix(host, args);
 
+                // Quantification (TakeoffMethods)
+                case "get_takeoff_info": return () => TakeoffMethods.Info(host, args);
+                case "preview_takeoff": return () => TakeoffMethods.Preview(host, args);
+                case "apply_takeoff": return () => TakeoffMethods.Apply(host, args);
+                case "get_takeoff_summary": return () => TakeoffMethods.Summary(host, args);
+
                 default: return null;
             }
         }

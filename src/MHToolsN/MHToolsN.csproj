@@ -28,7 +28,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>2.3.2</Version>
+    <Version>2.4.0</Version>
     <Company>Mohamed Ali Harby</Company>
     <Product>MHTools-N</Product>
     <Copyright>Copyright (c) 2026 Mohamed Ali Harby. MIT licence.</Copyright>
@@ -119,6 +119,23 @@
     repo-local lib\Navisworks\<year> folder) via $(NavisworksPath). -->
   <ItemGroup>
     <PackageReference Include="Speckle.Navisworks.API" Version="$(NavisApiVersion)" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!--
+    Quantification (the Takeoff API, Autodesk.Navisworks.Takeoff.dll) is not in the
+    Speckle package. 2024-2026: the Chuongmep package for that year (no dependencies,
+    the one DLL). 2027 has no package yet: the DLL of the installed Navisworks (or a
+    repo-local lib\Navisworks\2027 copy) through $(NavisworksPath). Both kept out of
+    the output folder - Navisworks loads its own.
+  -->
+  <ItemGroup Condition="'$(NavisVersion)' != '2027'">
+    <PackageReference Include="Chuongmep.Navis.Api.Autodesk.Navisworks.Takeoff" Version="$(NavisVersion).0.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(NavisVersion)' == '2027'">
+    <Reference Include="Autodesk.Navisworks.Takeoff">
+      <HintPath>$(NavisworksPath)\Autodesk.Navisworks.Takeoff.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <!--

@@ -392,6 +392,61 @@ namespace MHToolsN.AgentServer
             }, cancellationToken);
         }
 
+        // ======================================================= Quantification
+
+        private static JsonObject TakeoffArgs(string[] categories, string[] disciplines, string model)
+        {
+            return new JsonObject
+            {
+                ["categories"] = new JsonArray((categories ?? new string[0]).Select(c => (JsonNode)c).ToArray()),
+                ["disciplines"] = new JsonArray((disciplines ?? new string[0]).Select(d => (JsonNode)d).ToArray()),
+                ["model"] = model ?? ""
+            };
+        }
+
+        [McpServerTool(Name = "get_takeoff_info", ReadOnly = true, Idempotent = true),
+         Description("Navisworks Quantification (quantity takeoff) in this file: whether it is set up (Project Setup done - needed before anything can be " +
+                     "taken off), its tables with row counts, and the variables each holds (Length, Area, Volume, Count..., input and calculated).")]
+        public async Task<string> TakeoffInfo(CancellationToken cancellationToken, string sessionId = "")
+        {
+            return await Call(sessionId, "get_takeoff_info", new JsonObject(), cancellationToken);
+        }
+
+        [McpServerTool(Name = "preview_takeoff", ReadOnly = true, Idempotent = true),
+         Description("What apply_takeoff would add to Quantification, without changing anything. The structure: an item group per discipline " +
+                     "(from the file: AR, ST, MEC, EL, ICT...), one per Revit category under it, one item per Revit type, holding that type's elements. " +
+                     "Navisworks works out Length, Area, Volume and Count from the elements. Elements already taken off are counted, not added again. " +
+                     "categories: only these Revit categories (e.g. [\"Ducts\",\"Pipes\"]); disciplines: only files of these (e.g. [\"MEC\"]); " +
+                     "model: only files whose name contains this. Non-physical categories (rooms, grids, levels, annotation) are left out. " +
+                     "limit: how many items (types) to list.")]
+        public async Task<string> PreviewTakeoff(CancellationToken cancellationToken, string[] categories = null, string[] disciplines = null,
+            string model = "", int limit = 80, string sessionId = "")
+        {
+            var args = TakeoffArgs(categories, disciplines, model);
+            args["limit"] = limit;
+            return await Call(sessionId, "preview_takeoff", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "apply_takeoff"),
+         Description("Fill in Quantification from the model, as preview_takeoff showed: create the item groups and items that are missing (existing ones " +
+                     "with the same name are reused) and take off the elements not yet taken off. Quantification must be set up first (get_takeoff_info). " +
+                     "Same filters as preview_takeoff. A large takeoff takes a while: the call may report 'running' - poll get_execution." + ChangeHelp)]
+        public async Task<string> ApplyTakeoff(CancellationToken cancellationToken, string[] categories = null, string[] disciplines = null,
+            string model = "", bool dryRun = true, string sessionId = "")
+        {
+            var args = TakeoffArgs(categories, disciplines, model);
+            args["dryRun"] = dryRun;
+            return await Call(sessionId, "apply_takeoff", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "get_takeoff_summary", ReadOnly = true, Idempotent = true),
+         Description("The quantities in Quantification now: per item, its group path (Discipline / Category), the number of objects and the sums of " +
+                     "its calculated quantities (Length, Area, Volume, Count...), in the units chosen at Project Setup. filter: group or item contains this.")]
+        public async Task<string> TakeoffSummary(CancellationToken cancellationToken, string filter = "", int limit = 200, string sessionId = "")
+        {
+            return await Call(sessionId, "get_takeoff_summary", new JsonObject { ["filter"] = filter, ["limit"] = limit }, cancellationToken);
+        }
+
         // ================================================================= view
 
         [McpServerTool(Name = "capture_view", ReadOnly = true, Idempotent = true),
