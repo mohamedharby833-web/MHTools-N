@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:MHToolsN.UI"
         Title="Quantities"
-        Width="980" Height="760" MinWidth="820" MinHeight="560"
+        Width="1240" Height="780" MinWidth="980" MinHeight="560"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
 
@@ -52,7 +52,14 @@
 
             <TabControl Grid.Row="2" x:Name="Tabs">
                 <TabItem Header="Take off">
-                    <Border Style="{DynamicResource MhTableFrame}" Margin="0,8,0,0">
+                    <DockPanel Margin="0,8,0,0">
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <TextBox x:Name="CategoriesSearch" VerticalContentAlignment="Center" TextChanged="OnCategoriesSearch"
+                                 ToolTip="Show only the rows whose discipline or category contains this. The header tick box acts on what is shown." />
+                        <TextBlock x:Name="CategoriesSearchHint" Text="Search..." Style="{DynamicResource MhMutedText}"
+                                   IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    </Grid>
+                    <Border Style="{DynamicResource MhTableFrame}">
                         <DataGrid x:Name="CategoriesGrid" BorderThickness="0" AutoGenerateColumns="False"
                                   CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Extended">
                             <DataGrid.Columns>
@@ -76,22 +83,34 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </Border>
+                    </DockPanel>
                 </TabItem>
                 <TabItem Header="Quantities">
                     <DockPanel Margin="0,8,0,0">
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBox x:Name="QuantitiesSearch" VerticalContentAlignment="Center" TextChanged="OnQuantitiesSearch"
+                                     ToolTip="Show only the items whose group or Revit type contains this." />
+                            <TextBlock x:Name="QuantitiesSearchHint" Text="Search..." Style="{DynamicResource MhMutedText}"
+                                       IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" />
+                        </Grid>
                         <TextBlock DockPanel.Dock="Bottom" Style="{DynamicResource MhMutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Sums per Quantification item, in the units chosen at Project Setup. Edit or report them in Navisworks' Quantification workbook." />
+                                   Text="Sums per Quantification item, in the units chosen at Project Setup (metric: m, m², m³, kg). A blank cell: the elements carry no such value - Revit fittings, for instance, have no length. Width, Thickness and Height add up like the other columns, as in Navisworks' Quantification workbook." />
                         <Border Style="{DynamicResource MhTableFrame}">
                             <DataGrid x:Name="QuantitiesGrid" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True"
                                       CanUserAddRows="False" HeadersVisibility="Column">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Group" Width="230" Binding="{Binding Group}" ElementStyle="{StaticResource CellText}" />
-                                    <DataGridTextColumn Header="Item (Revit type)" Width="*" Binding="{Binding Item}" ElementStyle="{StaticResource CellText}" />
-                                    <DataGridTextColumn Header="Objects" Width="70" Binding="{Binding Objects}" ElementStyle="{StaticResource NumberText}" />
-                                    <DataGridTextColumn Header="Length" Width="90" Binding="{Binding Length}" ElementStyle="{StaticResource NumberText}" />
-                                    <DataGridTextColumn Header="Area" Width="90" Binding="{Binding Area}" ElementStyle="{StaticResource NumberText}" />
-                                    <DataGridTextColumn Header="Volume" Width="90" Binding="{Binding Volume}" ElementStyle="{StaticResource NumberText}" />
-                                    <DataGridTextColumn Header="Count" Width="70" Binding="{Binding Count}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Group" Width="200" Binding="{Binding Group}" ElementStyle="{StaticResource CellText}" />
+                                    <DataGridTextColumn Header="Item (Revit type)" Width="*" MinWidth="160" Binding="{Binding Item}" ElementStyle="{StaticResource CellText}" />
+                                    <DataGridTextColumn Header="Objects" Width="64" Binding="{Binding Objects}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Length" Width="78" Binding="{Binding Length}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Width" Width="70" Binding="{Binding Width}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Thickness" Width="76" Binding="{Binding Thickness}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Height" Width="70" Binding="{Binding Height}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Perimeter" Width="78" Binding="{Binding Perimeter}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Area" Width="78" Binding="{Binding Area}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Volume" Width="72" Binding="{Binding Volume}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Weight" Width="72" Binding="{Binding Weight}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Count" Width="60" Binding="{Binding Count}" ElementStyle="{StaticResource NumberText}" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Border>

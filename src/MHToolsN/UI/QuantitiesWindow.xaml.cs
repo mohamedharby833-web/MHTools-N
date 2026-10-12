@@ -54,8 +54,13 @@ namespace MHToolsN.UI
             public string Item { get; set; }
             public long Objects { get; set; }
             public string Length { get; set; }
+            public string Width { get; set; }
+            public string Thickness { get; set; }
+            public string Height { get; set; }
+            public string Perimeter { get; set; }
             public string Area { get; set; }
             public string Volume { get; set; }
+            public string Weight { get; set; }
             public string Count { get; set; }
         }
 
@@ -98,8 +103,8 @@ namespace MHToolsN.UI
                     .Select(g => new CategoryRow { DisciplineName = g.First().DisciplineName, Category = g.First().Category, Lines = g.ToList() })
                     .OrderBy(r => r.DisciplineName).ThenBy(r => r.Category)
                     .ToList();
-                foreach (CategoryRow row in _rows) row.Include = row.ToAdd > 0;
                 CategoriesGrid.ItemsSource = _rows;
+                FilterCategories();
                 ScanText.Text = _rows.Count + " categories, " + _plan.Lines.Count + " types, " + _plan.Elements + " elements (" +
                                 _plan.ToAdd + " to take off, " + (_plan.Elements - _plan.ToAdd) + " already)." +
                                 (_plan.Warnings.Count > 0 ? "  " + string.Join("  ", _plan.Warnings.Take(2)) : "");
@@ -124,7 +129,8 @@ namespace MHToolsN.UI
         private void OnAll(object sender, RoutedEventArgs e)
         {
             bool value = AllBox.IsChecked == true;
-            foreach (CategoryRow row in _rows) row.Include = value;
+            // The rows the search shows.
+            foreach (CategoryRow row in CategoriesGrid.Items.OfType<CategoryRow>().ToList()) row.Include = value;
             UpdateButtons();
         }
 
@@ -193,10 +199,16 @@ namespace MHToolsN.UI
                     Item = (string)r["item"],
                     Objects = Convert.ToInt64(r["objects"]),
                     Length = Number(r, "Length"),
+                    Width = Number(r, "Width"),
+                    Thickness = Number(r, "Thickness"),
+                    Height = Number(r, "Height"),
+                    Perimeter = Number(r, "Perimeter"),
                     Area = Number(r, "Area"),
                     Volume = Number(r, "Volume"),
+                    Weight = Number(r, "Weight"),
                     Count = Number(r, "Count")
                 }).ToList();
+                FilterQuantities();
             }
             catch (Exception ex)
             {
@@ -216,8 +228,49 @@ namespace MHToolsN.UI
         {
             bool ready = _document != null && !_document.IsClear && _document.GetTakeoffReady();
             TakeOffButton.IsEnabled = ready && _plan != null && _rows.Any(r => r.Include && r.ToAdd > 0);
-            int add = _rows.Where(r => r.Include).Sum(r => r.ToAdd);
-            Footer.Status = _plan == null ? "Scan the model first." : add + " element(s) ticked to take off.";
+            var ticked = _rows.Where(r => r.Include).ToList();
+            int add = ticked.Sum(r => r.ToAdd), already = ticked.Sum(r => r.Already);
+            if (_plan == null) Footer.Status = "Scan the model first.";
+            else if (ticked.Count == 0) Footer.Status = "Nothing ticked.";
+            else if (add == 0) Footer.Status = "All " + already.ToString("#,0") + " ticked element(s) are already taken off - nothing to add.";
+            else Footer.Status = add.ToString("#,0") + " element(s) to take off" + (already > 0 ? " (" + already.ToString("#,0") + " already)." : ".");
+
+            AllBox.IsChecked = _rows.Count > 0 && _rows.All(r => r.Include) ? true : _rows.Any(r => r.Include) ? (bool?)null : false;
+        }
+
+        // -------------------------------------------------------------- search
+
+        private void OnCategoriesSearch(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            CategoriesSearchHint.Visibility = CategoriesSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            FilterCategories();
+        }
+
+        private void OnQuantitiesSearch(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            QuantitiesSearchHint.Visibility = QuantitiesSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            FilterQuantities();
+        }
+
+        private void FilterCategories()
+        {
+            if (CategoriesGrid.ItemsSource == null) return;
+            string text = CategoriesSearch.Text.Trim();
+            System.Windows.Data.CollectionViewSource.GetDefaultView(CategoriesGrid.ItemsSource).Filter = text.Length == 0 ? (Predicate<object>)null
+                : o => Contains(text, ((CategoryRow)o).DisciplineName, ((CategoryRow)o).Category);
+        }
+
+        private void FilterQuantities()
+        {
+            if (QuantitiesGrid.ItemsSource == null) return;
+            string text = QuantitiesSearch.Text.Trim();
+            System.Windows.Data.CollectionViewSource.GetDefaultView(QuantitiesGrid.ItemsSource).Filter = text.Length == 0 ? (Predicate<object>)null
+                : o => Contains(text, ((QuantityRow)o).Group, ((QuantityRow)o).Item);
+        }
+
+        private static bool Contains(string text, params string[] fields)
+        {
+            return fields.Any(f => f != null && f.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private void OnClose(object sender, RoutedEventArgs e)
