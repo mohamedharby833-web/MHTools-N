@@ -3,14 +3,19 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:MHToolsN.UI"
-        Title="MHTools-N - Trusted C#"
-        Width="520" SizeToContent="Height"
+        Title="MHTools-N - Allow generated C#"
+        Width="560" SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
 
-    <!-- Only one of the two choices switches Trusted C# on; closing the window
-         or Cancel leaves it off. The look comes from MhTheme.Apply. -->
+    <!--
+        Switches Trusted C# on, in Ask or Auto mode - the same window as
+        MHTools-R's. The mode is picked first and confirmed with Turn on, so a
+        click shows what it chose before anything changes. Cancel is the default
+        button: Enter, Esc and the X all leave it off. The look comes from
+        MhTheme.Apply.
+    -->
 
     <Grid>
         <Grid.RowDefinitions>
@@ -19,36 +24,48 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:MhHeader Grid.Row="0" Title="Trusted C#"
-                     Subtitle="Let connected AI apps change this Navisworks model?" />
+        <ui:MhHeader Grid.Row="0" Title="Allow generated C#"
+                     Subtitle="Let connected agents run generated C# in this Navisworks?" />
 
         <StackPanel Grid.Row="1" Margin="20,16,20,16">
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
-                       Text="With this off, an AI app can read the model and change only the view (selection, zoom, hiding, temporary colours). With it on, it may also change the model: save sets and viewpoints, change clash statuses, assignees and comments, run clash tests, build the Clash Matrix - and run C# it writes itself." />
+                       Text="The code runs inside Navisworks with your Windows permissions. It can change the model and reach files and the network - it is not sandboxed. Every change is one undoable step (Ctrl+Z), and the bridge never saves the file." />
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,14"
-                       Text="C# runs inside Navisworks with your Windows permissions and is not sandboxed. Every change is one undoable step (Ctrl+Z), and the bridge never saves the file. This stays on until you switch it off, stop the Agent Bridge or close Navisworks." />
+                       Text="Off, agents only read the model and change the view. On, they may also save sets and viewpoints, change clash statuses, run clash tests, build the Clash Matrix, fill in Quantification and run C#. This stays on until you switch it off or stop the bridge." />
 
-            <Button x:Name="AskButton" Style="{DynamicResource MhPrimaryButton}" HorizontalContentAlignment="Left"
-                    Padding="14,8" Click="OnAsk" Height="Auto">
-                <StackPanel>
-                    <TextBlock FontWeight="SemiBold" Text="Ask before each change (recommended)" />
-                    <TextBlock TextWrapping="Wrap" Opacity="0.9"
-                               Text="Before each change Navisworks tells you what the AI wants to do, and does it only if you say Yes." />
-                </StackPanel>
-            </Button>
+            <!-- A card per mode: the whole card picks it, and the picked one is
+                 outlined in the accent (code-behind, Mark). -->
+            <Border x:Name="AskCard" BorderThickness="1" CornerRadius="4" Margin="0,0,0,8"
+                    Cursor="Hand" MouseLeftButtonUp="OnPickAsk">
+                <RadioButton x:Name="AskOption" Style="{DynamicResource MhRadioButton}" GroupName="Mode"
+                             IsChecked="True" Margin="14,10" Checked="OnModeChanged">
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource MhStrongText}" Text="Ask before each change (recommended)" />
+                        <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Text="Before each change Navisworks shows what the agent wants to do - the code, for C# - and does it only if you say Yes." />
+                    </StackPanel>
+                </RadioButton>
+            </Border>
 
-            <Button Margin="0,10,0,0" HorizontalContentAlignment="Left" Padding="14,8" Click="OnAuto" Height="Auto">
-                <StackPanel>
-                    <TextBlock FontWeight="SemiBold" Text="Auto - keep changes without asking" />
-                    <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap"
-                               Text="The AI works on its own. Use it on a copy of the model, not a live coordination file." />
-                </StackPanel>
-            </Button>
+            <Border x:Name="AutoCard" BorderThickness="1" CornerRadius="4"
+                    Cursor="Hand" MouseLeftButtonUp="OnPickAuto">
+                <RadioButton x:Name="AutoOption" Style="{DynamicResource MhRadioButton}" GroupName="Mode"
+                             Margin="14,10" Checked="OnModeChanged">
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource MhStrongText}" Text="Auto - keep changes without asking" />
+                        <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Text="The agent works on its own. Use it on a copy of the model, not a live coordination file." />
+                    </StackPanel>
+                </RadioButton>
+            </Border>
         </StackPanel>
 
-        <ui:MhFooter Grid.Row="2">
+        <ui:MhFooter Grid.Row="2" Status="Generated C# stays off until you turn it on.">
             <ui:MhFooter.Actions>
-                <Button Content="Cancel" IsCancel="True" Click="OnCancel" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Cancel" IsDefault="True" IsCancel="True" Margin="0,0,8,0" />
+                    <Button Style="{DynamicResource MhPrimaryButton}" Content="Turn on" Click="OnTurnOn" />
+                </StackPanel>
             </ui:MhFooter.Actions>
         </ui:MhFooter>
     </Grid>
