@@ -138,8 +138,8 @@ namespace MHToolsN.Services
                             Item2 = Describe(r.CompositeItem2 ?? r.Item2),
                             AssignedTo = Who(r.AssignedTo),
                             ApprovedBy = Who(r.ApprovedBy),
-                            ApprovedTime = r.ApprovedTime,
-                            Created = r.CreatedTime,
+                            ApprovedTime = RealDate(r.ApprovedTime),
+                            Created = RealDate(r.CreatedTime),
                             Description = r.Description,
                             Comments = CommentsText(r)
                         };
@@ -147,7 +147,7 @@ namespace MHToolsN.Services
 #if NAVIS2026 || NAVIS2027
                         // Resolved by / when, and the clash's own priority, exist from Navisworks 2026.
                         row.ResolvedBy = Who(r.ResolvedBy);
-                        row.ResolvedTime = r.ResolvedTime;
+                        row.ResolvedTime = RealDate(r.ResolvedTime);
                         row.Priority = r.Priority == 1 ? "High" : r.Priority == 2 ? "Medium" : r.Priority == 3 ? "Low" : "";
 #endif
 
@@ -351,7 +351,7 @@ namespace MHToolsN.Services
         /// </summary>
         internal static string ValueText(VariantData v)
         {
-            if (v.IsDisplayString) return v.ToDisplayString();
+            if (v.IsDisplayString) return CleanReference(v.ToDisplayString());
             if (v.IsIdentifierString) return v.ToIdentifierString();
             if (v.IsInt32) return v.ToInt32().ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (v.IsNamedConstant) return v.ToNamedConstant().DisplayName;
@@ -360,6 +360,28 @@ namespace MHToolsN.Services
             if (v.IsDateTime) return v.ToDateTime().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             if (v.IsNone) return null;
             return v.ToString();
+        }
+
+        // Revit exports a reference to another element as its kind, name and id:
+        // Level "L00 GROUND LEVEL", #2787 - Phase "New Construction", #86961.
+        private static readonly System.Text.RegularExpressions.Regex Reference =
+            new System.Text.RegularExpressions.Regex("^[A-Za-z][A-Za-z0-9_]* \"(.*)\", #-?\\d+$");
+
+        /// <summary>A Revit element reference as just its name ("L00 GROUND LEVEL"); any other text as it is.</summary>
+        internal static string CleanReference(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.IndexOf(", #", StringComparison.Ordinal) < 0) return text;
+            var m = Reference.Match(text.Trim());
+            return m.Success ? m.Groups[1].Value : text;
+        }
+
+        /// <summary>
+        /// A clash date, or null when it was never set: Navisworks reports an unset
+        /// date (an approval that never happened) as 1 January 1970.
+        /// </summary>
+        internal static DateTime? RealDate(DateTime? value)
+        {
+            return value.HasValue && value.Value.Year > 1971 ? value : (DateTime?)null;
         }
 
         internal static string CategoryNode(ModelItem item)

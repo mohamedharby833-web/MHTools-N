@@ -173,7 +173,7 @@ namespace MHToolsN.Bridge
                 { "pointMeters", ModelMethods.Point(r.Center, mmPerUnit) },
                 { "item1", one == null ? null : ModelMethods.Summary(items, one, true) },
                 { "item2", two == null ? null : ModelMethods.Summary(items, two, true) },
-                { "found", r.CreatedTime.HasValue ? r.CreatedTime.Value.ToString("yyyy-MM-dd") : null }
+                { "found", ClashResultsReader.RealDate(r.CreatedTime).HasValue ? ClashResultsReader.RealDate(r.CreatedTime).Value.ToString("yyyy-MM-dd") : null }
             };
             if (group != null) row["group"] = group.DisplayName;
             string assigned = ClashResultsReader.Who(r.AssignedTo);
@@ -181,7 +181,8 @@ namespace MHToolsN.Bridge
             if (!string.IsNullOrWhiteSpace(r.Description)) row["description"] = r.Description;
             string comments = ClashResultsReader.CommentsText(r);
             if (!string.IsNullOrEmpty(comments)) row["comments"] = comments;
-            if (r.ApprovedTime.HasValue) row["approved"] = ClashResultsReader.Who(r.ApprovedBy) + " " + r.ApprovedTime.Value.ToString("yyyy-MM-dd");
+            DateTime? approved = ClashResultsReader.RealDate(r.ApprovedTime);
+            if (approved.HasValue) row["approved"] = (ClashResultsReader.Who(r.ApprovedBy) + " " + approved.Value.ToString("yyyy-MM-dd")).Trim();
             return row;
         }
 
