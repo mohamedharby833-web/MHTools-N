@@ -77,8 +77,18 @@ namespace MHToolsN.Commands
 
             var window = new TrustedCodeWindow();
             ClashMatrixCommand.ShowOwned(window);
-            if (window.Choice != CodeMode.Off && Host != null)
-                Host.Mode = window.Choice;
+            if (window.Choice == CodeMode.Off || Host == null) return;
+
+            // Said out loud: the window just closing gave no sign that anything was
+            // switched on, and Navisworks redraws the ribbon label only later.
+            Host.Mode = window.Choice;
+            MessageBox.Show(
+                (window.Choice == CodeMode.Ask
+                    ? "Trusted C# is ON - Ask.\n\nEach change an AI app makes waits for you to keep or undo it."
+                    : "Trusted C# is ON - Auto.\n\nChanges an AI app makes are kept without asking. Use it on a copy of the model.") +
+                "\n\nThe button reads \"Trusted C# On\" while it is on. Click it again to switch it off; " +
+                "it also switches off when the Agent Bridge stops or Navisworks closes.",
+                Title, MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         public static void ConnectAi(string[] parameters)
