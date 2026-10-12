@@ -104,6 +104,45 @@ namespace MHToolsN.Bridge
             return Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        public static int Int(Dictionary<string, object> args, string name, int fallback, int min, int max)
+        {
+            object value;
+            if (args == null || !args.TryGetValue(name, out value) || value == null) return fallback;
+            int n;
+            try { n = Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture); }
+            catch (Exception) { throw new BridgeException("INVALID_ARGUMENT", name + " must be a whole number."); }
+            return Math.Max(min, Math.Min(max, n));
+        }
+
+        public static bool Bool(Dictionary<string, object> args, string name, bool fallback)
+        {
+            object value;
+            if (args == null || !args.TryGetValue(name, out value) || value == null) return fallback;
+            if (value is bool) return (bool)value;
+            bool parsed;
+            return bool.TryParse(Convert.ToString(value), out parsed) ? parsed : fallback;
+        }
+
+        /// <summary>A list of strings: a JSON array, or one comma-separated string.</summary>
+        public static List<string> Strings(Dictionary<string, object> args, string name)
+        {
+            var list = new List<string>();
+            object value;
+            if (args == null || !args.TryGetValue(name, out value) || value == null) return list;
+            var text = value as string;
+            if (text != null)
+            {
+                foreach (string part in text.Split(','))
+                    if (part.Trim().Length > 0) list.Add(part.Trim());
+                return list;
+            }
+            var items = value as System.Collections.IEnumerable;
+            if (items != null)
+                foreach (object item in items)
+                    if (item != null && Convert.ToString(item).Trim().Length > 0) list.Add(Convert.ToString(item).Trim());
+            return list;
+        }
+
         public static Dictionary<string, object> Object(Dictionary<string, object> args, string name)
         {
             object value;

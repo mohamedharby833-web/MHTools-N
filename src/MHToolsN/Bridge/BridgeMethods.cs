@@ -23,6 +23,25 @@ namespace MHToolsN.Bridge
             switch (method)
             {
                 case "get_context": return () => Context(host);
+
+                // model (ModelMethods)
+                case "get_model_tree": return () => ModelMethods.Tree(host.Items, args);
+                case "find_items": return () => ModelMethods.Find(host.Items, args);
+                case "get_item_properties": return () => ModelMethods.Properties(host.Items, args);
+                case "get_selection": return () => ModelMethods.Selection(host.Items, args);
+                case "list_sets": return () => ModelMethods.Sets(host.Items, args);
+                case "get_set_items": return () => ModelMethods.SetItems(host.Items, args);
+                case "list_viewpoints": return () => ModelMethods.Viewpoints(host.Items, args);
+
+                // clash (ClashMethods)
+                case "get_clash_summary": return () => ClashMethods.Summary(host.Items, args);
+                case "list_clash_tests": return () => ClashMethods.Tests(host.Items, args);
+                case "get_clash_results": return () => ClashMethods.Results(host.Items, args);
+                case "get_clash_image": return () => ClashMethods.Image(host.Items, args);
+
+                // view (ViewMethods)
+                case "capture_view": return () => ViewMethods.Capture(host.Items, args);
+
                 default: return null;
             }
         }

@@ -93,6 +93,9 @@ namespace MHToolsN.Bridge
 
         public string SessionId { get { return _sessionId; } }
 
+        /// <summary>Ids for the model items handed to agents; used on the UI thread only.</summary>
+        public ItemRegistry Items { get; } = new ItemRegistry();
+
         public CodeMode Mode
         {
             get { return _codeMode; }

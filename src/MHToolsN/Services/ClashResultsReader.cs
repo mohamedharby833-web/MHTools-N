@@ -162,7 +162,7 @@ namespace MHToolsN.Services
             return report;
         }
 
-        private static IEnumerable<ClashTest> AllTests(Document document)
+        internal static IEnumerable<ClashTest> AllTests(Document document)
         {
             var stack = new Stack<SavedItem>();
             var root = new List<SavedItem>();
@@ -188,7 +188,7 @@ namespace MHToolsN.Services
             }
         }
 
-        private static IEnumerable<ClashResult> Results(ClashTest test)
+        internal static IEnumerable<ClashResult> Results(ClashTest test)
         {
             foreach (SavedItem child in test.Children)
             {
@@ -205,7 +205,7 @@ namespace MHToolsN.Services
             }
         }
 
-        private static string PriorityText(ClashTest test)
+        internal static string PriorityText(ClashTest test)
         {
 #if NAVIS2026 || NAVIS2027
             switch (test.Priority)
@@ -222,7 +222,7 @@ namespace MHToolsN.Services
         /// A person as text. Before Navisworks 2026 "assigned to", "approved by" and a
         /// comment's author are strings; from 2026 they are Assignee objects.
         /// </summary>
-        private static string Who(object person)
+        internal static string Who(object person)
         {
             if (person == null) return "";
             var text = person as string;
@@ -231,7 +231,7 @@ namespace MHToolsN.Services
             return (name != null ? name.GetValue(person, null) as string : null) ?? person.ToString();
         }
 
-        private static string CommentsText(ClashResult r)
+        internal static string CommentsText(ClashResult r)
         {
             try
             {
@@ -267,7 +267,7 @@ namespace MHToolsN.Services
             }
         }
 
-        private static byte[] Jpeg(Bitmap bitmap)
+        internal static byte[] Jpeg(Bitmap bitmap)
         {
             ImageCodecInfo codec = ImageCodecInfo.GetImageEncoders().First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             using (var parameters = new EncoderParameters(1))
@@ -290,7 +290,7 @@ namespace MHToolsN.Services
 
         // ------------------------------------------------------------- items
 
-        private static ItemInfo Describe(ModelItem item)
+        internal static ItemInfo Describe(ModelItem item)
         {
             if (item == null)
                 return ItemInfo.Empty;
@@ -329,7 +329,7 @@ namespace MHToolsN.Services
         }
 
         /// <summary>A property of the item or, failing that, of its nearest ancestors (the element above a geometry node).</summary>
-        private static string Property(ModelItem item, Func<PropertyCategoryCollection, DataProperty> find)
+        internal static string Property(ModelItem item, Func<PropertyCategoryCollection, DataProperty> find)
         {
             ModelItem current = item;
             for (int depth = 0; current != null && depth < 4; depth++, current = current.Parent)
@@ -349,7 +349,7 @@ namespace MHToolsN.Services
         /// A property value as text, whatever its type. ToDisplayString only works on a
         /// text value - on a number (the Element ID is one) it throws.
         /// </summary>
-        private static string ValueText(VariantData v)
+        internal static string ValueText(VariantData v)
         {
             if (v.IsDisplayString) return v.ToDisplayString();
             if (v.IsIdentifierString) return v.ToIdentifierString();
@@ -362,7 +362,7 @@ namespace MHToolsN.Services
             return v.ToString();
         }
 
-        private static string CategoryNode(ModelItem item)
+        internal static string CategoryNode(ModelItem item)
         {
             for (ModelItem current = item; current != null; current = current.Parent)
             {
@@ -373,7 +373,7 @@ namespace MHToolsN.Services
         }
 
         /// <summary>The nearest Layer (or Level) node above the item in the selection tree, else its Level property.</summary>
-        private static string Layer(ModelItem item)
+        internal static string Layer(ModelItem item)
         {
             for (ModelItem current = item.Parent; current != null; current = current.Parent)
             {
@@ -384,7 +384,7 @@ namespace MHToolsN.Services
         }
 
         /// <summary>"file.nwc > Level 1 > Walls > Basic Wall > ...": the selection-tree path down to the item.</summary>
-        private static string TreePath(ModelItem item)
+        internal static string TreePath(ModelItem item)
         {
             var names = new List<string>();
             for (ModelItem current = item; current != null && names.Count < 16; current = current.Parent)
@@ -396,7 +396,7 @@ namespace MHToolsN.Services
             return string.Join(" > ", names);
         }
 
-        private static string SourceFile(ModelItem item)
+        internal static string SourceFile(ModelItem item)
         {
             for (ModelItem current = item; current != null; current = current.Parent)
             {

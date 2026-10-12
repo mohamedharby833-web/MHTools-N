@@ -335,9 +335,18 @@ AI app ──MCP (stdio)──► MHTools-N.AgentServer.exe ──named pipe─�
   nothing was done. If it started but has not finished, the AI gets an operation id
   to poll with `get_execution`. (Idea from NavisCoord, HorizunGroup, MIT.)
 
-Tools so far: `list_navisworks_sessions`, `get_context` (the file, units, appended
-models, selection, saved sets and viewpoints, clash tests, Trusted C# state) and
-`get_execution`. With one Navisworks running, `sessionId` can be left empty.
+Tools so far (all read only; with one Navisworks running, `sessionId` can be left empty):
+
+| Group | Tools |
+|---|---|
+| Session | `list_navisworks_sessions`, `get_context` (file, units, appended models, selection, sets, viewpoints, clash tests, Trusted C# state), `get_execution` |
+| Model | `get_model_tree` (paged), `find_items` (Revit category + property conditions, per model file), `get_item_properties` (all property categories, path, bounding box), `get_selection` |
+| Sets and views | `list_sets` (search / selection, Clash Matrix or not, optional counts), `get_set_items`, `list_viewpoints` |
+| Clash | `get_clash_summary` (start here: tests and clashes by status, top tests by open clashes), `list_clash_tests` (paged, filters), `get_clash_results` (paged, both items described), `get_clash_image` |
+| Pictures | `capture_view` (the view as the user sees it), `get_clash_image` (zoomed onto the clash, item 1 red, item 2 green, the rest faded) |
+
+Items get short ids (`n12`) the agent passes back to other tools; they last until
+models are opened, appended or reloaded. Distances are in mm, points in meters.
 
 ### About
 

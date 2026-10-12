@@ -25,7 +25,7 @@ namespace MHToolsN.AgentServer
                 return Command(args);
 
             ServerLog.Info("Server started (" + typeof(Program).Assembly.GetName().Version + ").");
-            Task.Run(() => ExtractionCleanup.RemoveUnused());
+            _ = Task.Run(() => ExtractionCleanup.RemoveUnused());
 
             var builder = Host.CreateApplicationBuilder(args);
             builder.Logging.ClearProviders();
