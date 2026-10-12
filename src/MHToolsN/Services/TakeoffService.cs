@@ -34,6 +34,7 @@ namespace MHToolsN.Services
         public int ItemsCreated;
         public int ObjectsAdded;
         public int Failed;
+        public int ItemsWithFormulas;
         public List<string> Errors = new List<string>();
     }
 
@@ -166,7 +167,12 @@ namespace MHToolsN.Services
                     long cat = EnsureRow(tx, takeoff.ItemGroups, groupIds, top, line.Category, ref result.GroupsCreated);
                     int before = result.ItemsCreated;
                     long item = EnsureRow(tx, takeoff.Items, itemIds, cat, line.Type, ref result.ItemsCreated);
-                    if (result.ItemsCreated > before) ModelFormulas(takeoff, item);
+                    if (result.ItemsCreated > before)
+                    {
+                        string formulaError = ModelFormulas(takeoff, item);
+                        if (formulaError == null) result.ItemsWithFormulas++;
+                        else if (result.Errors.Count < 10) result.Errors.Add("Formulas on " + line.Type + ": " + formulaError);
+                    }
 
                     foreach (ModelItem element in line.ToAdd)
                     {
@@ -195,7 +201,8 @@ namespace MHToolsN.Services
         /// measured model values ("=ModelLength"...), as a catalog item does - where the
         /// item has no formula of its own yet and an input variable "Model" + name exists.
         /// </summary>
-        private static void ModelFormulas(DocumentTakeoff takeoff, long itemRowId)
+        /// <returns>null when done, else what went wrong.</returns>
+        private static string ModelFormulas(DocumentTakeoff takeoff, long itemRowId)
         {
             try
             {
@@ -204,21 +211,27 @@ namespace MHToolsN.Services
                     if (d.Purpose == Purpose.Input && !string.IsNullOrEmpty(d.Name))
                         inputs[d.Name] = string.IsNullOrEmpty(d.DisplayNameForFormulaUsage) ? d.Name : d.DisplayNameForFormulaUsage;
 
+                // On an ITEM the quantities are Rollup variables (seen in 2027: Length,
+                // Area, Volume, Count... all Purpose.Rollup); their formula is what each
+                // of the item's objects calculates. So no filter on Purpose here.
                 TakeoffVariableCollection vars = takeoff.Items.SelectVariables(itemRowId);
                 bool changed = false;
                 foreach (TakeoffVariable v in vars)
                 {
-                    if (v.Definition == null || v.Definition.Purpose != Purpose.Calculation || !v.IsAbleToSetFormula || !v.IsFormulaNull) continue;
+                    if (v.Definition == null || v.Definition.VariableType != VariableType.Number || !v.IsAbleToSetFormula || !v.IsFormulaNull) continue;
                     string model;
-                    if (!inputs.TryGetValue("Model" + v.Definition.Name, out model)) continue;
-                    v.Formula = "=" + model;
+                    if (inputs.TryGetValue("Model" + v.Definition.Name, out model)) v.Formula = "=" + model;
+                    else if (string.Equals(v.Definition.Name, "Count", StringComparison.OrdinalIgnoreCase)) v.Formula = "=1";
+                    else continue;
                     changed = true;
                 }
                 if (changed) takeoff.Items.UpdateVariables(itemRowId, vars);
+                return changed ? null : "no quantity variable on the item takes a formula";
             }
             catch (Exception ex)
             {
                 Watchdog.Log("Quantification: model formulas on item " + itemRowId + " not set: " + ex.Message);
+                return ex.GetType().Name + ": " + ex.Message;
             }
         }
 
