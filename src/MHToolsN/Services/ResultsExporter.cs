@@ -535,7 +535,7 @@ namespace MHToolsN.Services
 
         // ================================================================ tables -> xlsx
 
-        private sealed class Table
+        internal sealed class Table
         {
             public readonly string Name;
             public readonly string[] Headers;
@@ -553,7 +553,7 @@ namespace MHToolsN.Services
         }
 
         /// <summary>Plain OOXML for a few styled tables: header row, frozen and filtered; status cells coloured.</summary>
-        private static class XlsxTables
+        internal static class XlsxTables
         {
             // cellXfs: 0 default, 1 header, 2 text, 3 number 0.0, 4 number 0.000, 5 integer,
             // 6.. one per status (in ClashReport.Statuses order), then total row.

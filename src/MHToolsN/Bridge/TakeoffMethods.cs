@@ -45,8 +45,8 @@ namespace MHToolsN.Bridge
             }
 
             int types = plan.Lines.Count(l => l.ToAdd.Count > 0);
-            string what = "Quantification: take off " + plan.ToAdd + " element(s) onto " + types + " item(s) (one per Revit type), " +
-                          "under item groups per discipline and category (" +
+            string what = "Quantification: take off " + plan.ToAdd + " element(s) onto " + types + " item(s) (one per Revit type; ducts, duct fittings, accessories and insulation one per size under their type, " +
+                          "with sheet thickness and weight for ducts), under item groups per discipline and category (" +
                           string.Join(", ", plan.Lines.Where(l => l.ToAdd.Count > 0).Select(l => l.Discipline + " " + l.Category).Distinct().Take(8)) +
                           (plan.Lines.Select(l => l.Discipline + l.Category).Distinct().Count() > 8 ? ", ..." : "") +
                           "). Elements already taken off are left as they are.";
@@ -89,7 +89,7 @@ namespace MHToolsN.Bridge
             {
                 { "items", rows.Take(limit).ToList() },
                 { "total", rows.Count },
-                { "note", "Sums over each item's objects, in the units chosen at Quantification Project Setup." }
+                { "note", "Per item: Length, Area, Volume, Weight, Count summed over its objects; Width, Height, Thickness, Perimeter per piece (average). Units as chosen at Quantification Project Setup." }
             };
         }
 
@@ -122,7 +122,8 @@ namespace MHToolsN.Bridge
             if (limit > 0)
                 report["lines"] = plan.Lines.Take(limit).Select(l => (object)new Dictionary<string, object>
                 {
-                    { "group", l.DisciplineName + " / " + l.Category }, { "item", l.Type }, { "toAdd", l.ToAdd.Count }, { "already", l.AlreadyTakenOff }
+                    { "group", l.DisciplineName + " / " + l.Category + (l.Size != null ? " / " + l.Type : "") }, { "item", l.ItemName },
+                    { "toAdd", l.ToAdd.Count }, { "already", l.AlreadyTakenOff }
                 }).ToList();
             return report;
         }

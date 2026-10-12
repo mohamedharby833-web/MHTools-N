@@ -41,7 +41,7 @@
 
             <TextBlock Style="{DynamicResource MhStrongText}" Text="Quantities" Margin="0,0,0,1" />
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
-                       Text="Fills Navisworks Quantification from the model: an item group per discipline and Revit category, an item per Revit type with its elements taken off - Navisworks works out length, area, volume and count. Running it again adds only new elements. One Undo reverts it." />
+                       Text="Fills Navisworks Quantification from the model: an item group per discipline and Revit category, an item per Revit type with its elements taken off - Navisworks works out length, area, volume and count. Ductwork is itemized by size with sheet thickness (DW/144) and weight, and exports to Excel for the factory. Running it again adds only new elements. One Undo reverts it." />
 
             <TextBlock Style="{DynamicResource MhStrongText}" Text="AI Bridge" Margin="0,0,0,1" />
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"

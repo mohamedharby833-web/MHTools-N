@@ -30,7 +30,7 @@
         </Grid.RowDefinitions>
 
         <ui:MhHeader Grid.Row="0" Title="Quantities"
-                     Subtitle="Fills Navisworks Quantification from the model: an item group per discipline and Revit category, an item per Revit type." />
+                     Subtitle="Fills Navisworks Quantification from the model: item groups per discipline and Revit category, an item per Revit type - ducts, fittings, accessories and insulation an item per size, with sheet thickness and weight." />
 
         <Grid Grid.Row="1" Margin="20,14,20,10">
             <Grid.RowDefinitions>
@@ -53,6 +53,25 @@
             <TabControl Grid.Row="2" x:Name="Tabs">
                 <TabItem Header="Take off">
                     <DockPanel Margin="0,8,0,0">
+                    <Border DockPanel.Dock="Top" Style="{DynamicResource MhNotePanel}" Margin="0,0,0,8">
+                        <WrapPanel Orientation="Horizontal">
+                            <TextBlock Text="Duct sheet" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBlock Text="Standard" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="StandardBox" Width="70" VerticalContentAlignment="Center" Margin="0,0,12,0"
+                                     ToolTip="The name written with each duct's sheet thickness (Description2), e.g. DW/144." />
+                            <TextBlock Text="Thickness by longest side (mm : mm)" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="StepsBox" Width="230" VerticalContentAlignment="Center" Margin="0,0,12,0"
+                                     ToolTip="Longest side up to (mm) : sheet thickness (mm), e.g. 600:0.6, 750:0.8, 1250:1.0, 2500:1.2 (DW/144). Bigger ducts take the last thickness." />
+                            <TextBlock Text="Density" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="DensityBox" Width="56" VerticalContentAlignment="Center" Margin="0,0,4,0" ToolTip="kg/m³ - galvanised steel 7850." />
+                            <TextBlock Text="kg/m³" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock Text="Allowance" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="AllowanceBox" Width="44" VerticalContentAlignment="Center" Margin="0,0,4,0"
+                                     ToolTip="Percent added to each duct's sheet weight for seams, flanges and stiffeners." />
+                            <TextBlock Text="%" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <Button Content="DW/144" Style="{DynamicResource MhCompactButton}" Click="OnSheetDefaults" ToolTip="Back to the defaults: DW/144, 7850 kg/m³, 0 %." />
+                        </WrapPanel>
+                    </Border>
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
                         <TextBox x:Name="CategoriesSearch" VerticalContentAlignment="Center" TextChanged="OnCategoriesSearch"
                                  ToolTip="Show only the rows whose discipline or category contains this. The header tick box acts on what is shown." />
@@ -76,7 +95,7 @@
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Discipline" Width="170" IsReadOnly="True" Binding="{Binding DisciplineName}" ElementStyle="{StaticResource CellText}" />
                                 <DataGridTextColumn Header="Revit category" Width="*" IsReadOnly="True" Binding="{Binding Category}" ElementStyle="{StaticResource CellText}" />
-                                <DataGridTextColumn Header="Types (items)" Width="100" IsReadOnly="True" Binding="{Binding Types}" ElementStyle="{StaticResource NumberText}" />
+                                <DataGridTextColumn Header="Items" Width="100" IsReadOnly="True" Binding="{Binding Types}" ElementStyle="{StaticResource NumberText}" />
                                 <DataGridTextColumn Header="Elements" Width="90" IsReadOnly="True" Binding="{Binding Elements}" ElementStyle="{StaticResource NumberText}" />
                                 <DataGridTextColumn Header="To take off" Width="100" IsReadOnly="True" Binding="{Binding ToAdd}" ElementStyle="{StaticResource NumberText}" />
                                 <DataGridTextColumn Header="Already" Width="80" IsReadOnly="True" Binding="{Binding Already}" ElementStyle="{StaticResource NumberText}" />
@@ -94,13 +113,13 @@
                                        IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" />
                         </Grid>
                         <TextBlock DockPanel.Dock="Bottom" Style="{DynamicResource MhMutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Sums per Quantification item, in the units chosen at Project Setup (metric: m, m², m³, kg). A blank cell: the elements carry no such value - Revit fittings, for instance, have no length. Width, Thickness and Height add up like the other columns, as in Navisworks' Quantification workbook." />
+                                   Text="Per Quantification item, in the units chosen at Project Setup (metric: m, m², m³, kg): Length, Area, Volume, Weight and Count summed; Width, Thickness, Height and Perimeter per piece. A blank cell: the elements carry no such value - Revit fittings, for instance, have no length. Duct weight = sheet area x thickness x density (Duct sheet, Take off tab). Export Excel writes the factory list." />
                         <Border Style="{DynamicResource MhTableFrame}">
                             <DataGrid x:Name="QuantitiesGrid" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True"
                                       CanUserAddRows="False" HeadersVisibility="Column">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Group" Width="200" Binding="{Binding Group}" ElementStyle="{StaticResource CellText}" />
-                                    <DataGridTextColumn Header="Item (Revit type)" Width="*" MinWidth="160" Binding="{Binding Item}" ElementStyle="{StaticResource CellText}" />
+                                    <DataGridTextColumn Header="Item (Revit type or size)" Width="*" MinWidth="160" Binding="{Binding Item}" ElementStyle="{StaticResource CellText}" />
                                     <DataGridTextColumn Header="Objects" Width="64" Binding="{Binding Objects}" ElementStyle="{StaticResource NumberText}" />
                                     <DataGridTextColumn Header="Length" Width="78" Binding="{Binding Length}" ElementStyle="{StaticResource NumberText}" />
                                     <DataGridTextColumn Header="Width" Width="70" Binding="{Binding Width}" ElementStyle="{StaticResource NumberText}" />
@@ -122,6 +141,8 @@
         <ui:MhFooter x:Name="Footer" Grid.Row="2">
             <ui:MhFooter.Actions>
                 <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ExportButton" Content="Export Excel" Click="OnExport" Margin="0,0,8,0"
+                            ToolTip="Save the quantities as an Excel workbook for the factory: ductwork by type and size with sheet thickness and weight, fittings, insulation, every item." />
                     <Button x:Name="TakeOffButton" Style="{DynamicResource MhPrimaryButton}" Content="Take Off" Click="OnTakeOff" Margin="0,0,8,0"
                             ToolTip="Create the missing item groups and items and take off the ticked elements. One Undo (Ctrl+Z) reverts it." />
                     <Button Content="Close" Click="OnClose" IsCancel="True" />

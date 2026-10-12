@@ -67,12 +67,14 @@ namespace MHToolsN.UI
         private readonly Document _document;
         private TakeoffPlan _plan;
         private List<CategoryRow> _rows = new List<CategoryRow>();
+        private DuctSheet _sheet = DuctSheet.Load();
 
         public QuantitiesWindow(Document document)
         {
             MhTheme.Apply(this);
             InitializeComponent();
             _document = document;
+            ShowSheet();
             CheckReady();
             RefreshQuantities();
             UpdateButtons();
@@ -105,7 +107,7 @@ namespace MHToolsN.UI
                     .ToList();
                 CategoriesGrid.ItemsSource = _rows;
                 FilterCategories();
-                ScanText.Text = _rows.Count + " categories, " + _plan.Lines.Count + " types, " + _plan.Elements + " elements (" +
+                ScanText.Text = _rows.Count + " categories, " + _plan.Lines.Count + " items, " + _plan.Elements + " elements (" +
                                 _plan.ToAdd + " to take off, " + (_plan.Elements - _plan.ToAdd) + " already)." +
                                 (_plan.Warnings.Count > 0 ? "  " + string.Join("  ", _plan.Warnings.Take(2)) : "");
                 Tabs.SelectedIndex = 0;
@@ -152,9 +154,15 @@ namespace MHToolsN.UI
                 MessageBox.Show(this, "Nothing to take off: the ticked categories are already taken off.", Caption, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            DuctSheet sheet;
+            if (!ReadSheet(out sheet)) return;
             int types = chosen.Lines.Count(l => l.ToAdd.Count > 0);
+            int sized = chosen.Lines.Count(l => l.ToAdd.Count > 0 && l.Size != null);
             if (MessageBox.Show(this,
-                    "Take off " + add + " element(s) onto " + types + " item(s), one per Revit type, under item groups per discipline and category?\n\n" +
+                    "Take off " + add + " element(s) onto " + types + " item(s), under item groups per discipline and category?\n\n" +
+                    "An item per Revit type" + (sized > 0 ? "; ducts, duct fittings, accessories and insulation an item per size under their type (" + sized + " sizes), " +
+                    "ducts with sheet thickness and weight by " + sheet.Standard + " (" + sheet.StepsText + "), " + DuctSheet.Num(sheet.Density) + " kg/m³, +" +
+                    DuctSheet.Num(sheet.AllowancePercent) + " %" : "") + ".\n\n" +
                     "Existing groups and items of the same name are reused; elements already taken off are left as they are. One Undo (Ctrl+Z) reverts it.",
                     Caption, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK)
                 return;
@@ -164,14 +172,15 @@ namespace MHToolsN.UI
                 Cursor = System.Windows.Input.Cursors.Wait;
                 TakeoffResult result;
                 using (var progress = new NavisProgress("Quantification takeoff"))
-                    result = TakeoffService.Apply(_document, chosen, progress);
+                    result = TakeoffService.Apply(_document, chosen, progress, sheet);
                 Cursor = null;
 
                 MessageBox.Show(this,
                     "Item groups created: " + result.GroupsCreated + "\nItems created: " + result.ItemsCreated + "\nElements taken off: " + result.ObjectsAdded +
-                    (result.Failed > 0 ? "\nFailed: " + result.Failed + "\n\n" + string.Join("\n", result.Errors) : "") +
+                    (result.Failed > 0 ? "\nFailed: " + result.Failed : "") +
+                    (result.Errors.Count > 0 ? "\n\n" + string.Join("\n", result.Errors) : "") +
                     "\n\nOne Undo (Ctrl+Z) reverts this. Open Quantification to see the items.",
-                    Caption, MessageBoxButton.OK, result.Failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+                    Caption, MessageBoxButton.OK, result.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
 
                 OnScan(sender, e);
                 RefreshQuantities();
@@ -200,7 +209,7 @@ namespace MHToolsN.UI
                     Objects = Convert.ToInt64(r["objects"]),
                     Length = Number(r, "Length"),
                     Width = Number(r, "Width"),
-                    Thickness = Number(r, "Thickness"),
+                    Thickness = Number(r, "Thickness", "#,0.#####"),
                     Height = Number(r, "Height"),
                     Perimeter = Number(r, "Perimeter"),
                     Area = Number(r, "Area"),
@@ -216,18 +225,110 @@ namespace MHToolsN.UI
             }
         }
 
-        private static string Number(Dictionary<string, object> row, string key)
+        private static string Number(Dictionary<string, object> row, string key, string format = "#,0.###")
         {
             object v;
             if (!row.TryGetValue(key, out v) || v == null) return "";
             double d = Convert.ToDouble(v);
-            return d == 0 ? "" : d.ToString("#,0.###", CultureInfo.InvariantCulture);
+            return d == 0 ? "" : d.ToString(format, CultureInfo.InvariantCulture);
+        }
+
+        // ---------------------------------------------------------- duct sheet
+
+        private void ShowSheet()
+        {
+            StandardBox.Text = _sheet.Standard;
+            StepsBox.Text = _sheet.StepsText;
+            DensityBox.Text = DuctSheet.Num(_sheet.Density);
+            AllowanceBox.Text = DuctSheet.Num(_sheet.AllowancePercent);
+        }
+
+        private void OnSheetDefaults(object sender, RoutedEventArgs e)
+        {
+            _sheet = new DuctSheet();
+            ShowSheet();
+        }
+
+        /// <summary>The duct sheet as typed, remembered for next time; false (with a message) when it does not read.</summary>
+        private bool ReadSheet(out DuctSheet sheet)
+        {
+            sheet = null;
+            List<KeyValuePair<double, double>> steps;
+            string error;
+            double density, allowance;
+            if (!DuctSheet.TryParseSteps(StepsBox.Text, out steps, out error))
+            {
+                MessageBox.Show(this, "Duct sheet thickness: " + error, Caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+                StepsBox.Focus();
+                return false;
+            }
+            if (!DuctSheet.TryNumber(DensityBox.Text, out density) || density <= 0)
+            {
+                MessageBox.Show(this, "Duct sheet density: give kg/m³, e.g. 7850.", Caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+                DensityBox.Focus();
+                return false;
+            }
+            if (!DuctSheet.TryNumber(AllowanceBox.Text, out allowance) || allowance < 0)
+            {
+                MessageBox.Show(this, "Duct sheet allowance: give a percent, e.g. 0 or 10.", Caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+                AllowanceBox.Focus();
+                return false;
+            }
+            sheet = new DuctSheet
+            {
+                Standard = string.IsNullOrWhiteSpace(StandardBox.Text) ? DuctSheet.DefaultStandard : StandardBox.Text.Trim(),
+                Density = density,
+                AllowancePercent = allowance
+            };
+            sheet.SetSteps(steps);
+            sheet.Save();
+            _sheet = sheet;
+            return true;
+        }
+
+        // -------------------------------------------------------------- export
+
+        private void OnExport(object sender, RoutedEventArgs e)
+        {
+            if (_document == null || _document.IsClear || !_document.GetTakeoffReady()) return;
+            DuctSheet sheet;
+            if (!ReadSheet(out sheet)) return;
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export quantities",
+                Filter = "Excel workbook (*.xlsx)|*.xlsx",
+                FileName = SafeFileName(System.IO.Path.GetFileNameWithoutExtension(_document.FileName)) + " - Quantities.xlsx"
+            };
+            if (dialog.ShowDialog(this) != true) return;
+            try
+            {
+                Cursor = System.Windows.Input.Cursors.Wait;
+                QuantitiesExporter.WriteExcel(dialog.FileName, TakeoffService.Summary(_document, int.MaxValue), sheet);
+                Cursor = null;
+                Footer.Status = "Saved " + dialog.FileName;
+                if (MessageBox.Show(this, "Saved:\n" + dialog.FileName + "\n\nOpen it now?", Caption, MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Cursor = null;
+                Watchdog.LogException("Quantities: export", ex);
+                MessageBox.Show(this, "The export failed.\n\n" + ex.Message, Caption, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static string SafeFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) name = "Model";
+            foreach (char c in System.IO.Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            return name;
         }
 
         private void UpdateButtons()
         {
             bool ready = _document != null && !_document.IsClear && _document.GetTakeoffReady();
             TakeOffButton.IsEnabled = ready && _plan != null && _rows.Any(r => r.Include && r.ToAdd > 0);
+            ExportButton.IsEnabled = ready;
             var ticked = _rows.Where(r => r.Include).ToList();
             int add = ticked.Sum(r => r.ToAdd), already = ticked.Sum(r => r.Already);
             if (_plan == null) Footer.Status = "Scan the model first.";

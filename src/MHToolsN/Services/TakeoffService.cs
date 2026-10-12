@@ -14,8 +14,13 @@ namespace MHToolsN.Services
         public string Discipline;     // "MEC"
         public string DisciplineName; // "MECHANICAL - MEC" - the top item group
         public string Category;       // "Ducts" - the item group under it
-        public string Type;           // the Revit type - the item
+        public string Type;           // the Revit type - the item, or for a sized category the item group above the sizes
+        public string Size;           // "1000 x 700" - the item, for ducts and the like (null: not itemized by size)
+        public DuctSize SizeOf;       // the size read (null: none readable)
+        public double InsulationMm;   // duct insulation / lining thickness
         public List<ModelItem> ToAdd = new List<ModelItem>();
+
+        public string ItemName { get { return Size ?? Type; } }
         public int AlreadyTakenOff;
         public int NoGuid;
     }
@@ -63,6 +68,23 @@ namespace MHToolsN.Services
             "Generic Annotations", "Room Separation", "<Room Separation>", "Space Separation", "Area Boundary",
             "Reference Planes", "Scope Boxes", "Matchline", "Section Boxes", "HVAC Zones", "Mass", "Project Information"
         };
+
+        /// <summary>
+        /// Categories itemized by size (for the factory): Revit type > one item per size.
+        /// Value: the Revit property holding the size.
+        /// </summary>
+        private static readonly Dictionary<string, string> SizedCategories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Ducts", "Size" }, { "Flex Ducts", "Size" }, { "Duct Fittings", "Size" }, { "Duct Accessories", "Size" },
+            { "Duct Insulations", "Duct Size" }, { "Duct Linings", "Duct Size" }
+        };
+
+        public const string NoSize = "(no size)";
+
+        public static bool IsSized(string category)
+        {
+            return category != null && SizedCategories.ContainsKey(category);
+        }
 
         public static DocumentTakeoff Takeoff(Document doc)
         {
@@ -124,11 +146,31 @@ namespace MHToolsN.Services
                     if (wantCategories.Count > 0 && !wantCategories.Contains(category) && !wantCategories.Contains(NavisClashCreator.GetMainCategory(category))) continue;
 
                     string type = Text(item, null, null, "Element", "Type") ?? Text(item, null, null, "Element", "Family") ?? item.DisplayName;
-                    string key = discipline + "|" + category + "|" + type;
+                    string sizeLabel = null;
+                    DuctSize size = null;
+                    double insulationMm = 0;
+                    string sizeProperty;
+                    if (SizedCategories.TryGetValue(category, out sizeProperty))
+                    {
+                        size = DuctSize.Parse(Text(item, null, null, "Element", sizeProperty));
+                        sizeLabel = size != null ? size.Label : NoSize;
+                        if (category.EndsWith("Insulations", StringComparison.OrdinalIgnoreCase) || category.EndsWith("Linings", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string thickness = Text(item, null, null, "Element", category.EndsWith("Linings", StringComparison.OrdinalIgnoreCase) ? "Lining Thickness" : "Insulation Thickness");
+                            DuctSize t = DuctSize.Parse(thickness);
+                            if (t != null) { insulationMm = t.Width; sizeLabel += " - " + DuctSheet.Num(insulationMm) + " mm"; }
+                        }
+                    }
+
+                    string key = discipline + "|" + category + "|" + type + "|" + sizeLabel;
                     TakeoffLine line;
                     if (!lines.TryGetValue(key, out line))
                     {
-                        line = new TakeoffLine { Discipline = discipline, DisciplineName = Disciplines.Heading(discipline), Category = category, Type = type };
+                        line = new TakeoffLine
+                        {
+                            Discipline = discipline, DisciplineName = Disciplines.Heading(discipline), Category = category, Type = type,
+                            Size = sizeLabel, SizeOf = size, InsulationMm = insulationMm
+                        };
                         lines[key] = line;
                     }
                     Guid guid = item.InstanceGuid;
@@ -138,7 +180,10 @@ namespace MHToolsN.Services
                 }
             }
 
-            plan.Lines = lines.Values.OrderBy(l => l.Discipline).ThenBy(l => l.Category).ThenBy(l => l.Type).ToList();
+            // Sizes smallest first (by width, then height), as a factory list reads.
+            plan.Lines = lines.Values.OrderBy(l => l.Discipline).ThenBy(l => l.Category).ThenBy(l => l.Type)
+                .ThenBy(l => l.SizeOf != null ? l.SizeOf.Width : double.MaxValue).ThenBy(l => l.SizeOf != null ? l.SizeOf.Height : 0)
+                .ThenBy(l => l.Size).ToList();
             int noGuid = plan.Lines.Sum(l => l.NoGuid);
             if (noGuid > 0)
                 plan.Warnings.Add(noGuid + " element(s) have no GUID and cannot be taken off (Navisworks takes off only items with one).");
@@ -147,10 +192,12 @@ namespace MHToolsN.Services
 
         // --------------------------------------------------------------- apply
 
-        public static TakeoffResult Apply(Document doc, TakeoffPlan plan, NavisProgress progress)
+        public static TakeoffResult Apply(Document doc, TakeoffPlan plan, NavisProgress progress, DuctSheet sheet = null)
         {
             string why;
             if (!IsReady(doc, out why)) throw new InvalidOperationException(why);
+            if (sheet == null) sheet = DuctSheet.Load();
+            var units = new ProjectUnits();
 
             DocumentTakeoff takeoff = Takeoff(doc);
             var result = new TakeoffResult();
@@ -174,7 +221,9 @@ namespace MHToolsN.Services
                     {
                         long top = writer.Group(null, line.DisciplineName, ref result.GroupsCreated);
                         long cat = writer.Group(top, line.Category, ref result.GroupsCreated);
-                        long item = writer.Item(cat, line.Type, line.Category, ref result.ItemsCreated);
+                        long item = line.Size == null
+                            ? writer.Item(cat, line.Type, line.Category, ref result.ItemsCreated)
+                            : writer.Item(writer.Group(cat, line.Type, ref result.GroupsCreated), line.Size, line.Category, ref result.ItemsCreated);
 
                         foreach (ModelItem element in line.ToAdd)
                         {
@@ -183,6 +232,7 @@ namespace MHToolsN.Services
                             {
                                 TakeoffVariableCollection inputs = takeoff.Objects.CreateDefaultInputVariables();
                                 takeoff.Objects.MapModelItemPropertiesToInputVariables(item, element, inputs);
+                                if (line.Size != null) FillSized(inputs, line, sheet, units);
                                 takeoff.Objects.InsertModelItemTakeoff(item, element.InstanceGuid, inputs, false);
                                 result.ObjectsAdded++;
                             }
@@ -197,9 +247,143 @@ namespace MHToolsN.Services
                 }
                 undo.Commit();
             }
+            if (units.NotMetric)
+                result.Errors.Add("Quantification's Project Setup is not metric: duct sizes, sheet thickness and weight are written in " +
+                                  units.LengthName + " and kg - check them, or use a metric Project Setup.");
             Watchdog.Log("Quantification: groups +" + result.GroupsCreated + ", items +" + result.ItemsCreated + ", objects +" + result.ObjectsAdded +
                          (result.Failed > 0 ? ", failed " + result.Failed + " (" + string.Join("; ", result.Errors) + ")" : ""));
             return result;
+        }
+
+        // ------------------------------------------------------- sized items
+
+        /// <summary>
+        /// The length and area units Quantification's inputs are in - Project Setup's.
+        /// Values written without units are taken in them (seen live, 2027: a plain 1.0 for
+        /// ModelWidth came out as Width 1 m in a metric project), so ours are converted.
+        /// Read from the first mapped ModelLength / ModelArea that carries its units.
+        /// </summary>
+        private sealed class ProjectUnits
+        {
+            public double MetresPerLength = 1, SquareMetresPerArea = 1;
+            public string LengthName = "Meter";
+            private bool _length, _area;
+
+            public bool NotMetric { get { return _length && MetresPerLength != 1 && MetresPerLength != 0.001 && MetresPerLength != 0.01; } }
+
+            public void Learn(TakeoffVariableCollection inputs)
+            {
+                if (!_length)
+                {
+                    string u = UnitsOf(Var(inputs, "ModelLength"));
+                    double f;
+                    if (u != null && LengthFactors.TryGetValue(u, out f)) { MetresPerLength = f; LengthName = u; _length = true; }
+                }
+                if (!_area)
+                {
+                    string u = UnitsOf(Var(inputs, "ModelArea"));
+                    double f;
+                    if (u != null && AreaFactors.TryGetValue(u, out f)) { SquareMetresPerArea = f; _area = true; }
+                }
+            }
+
+            public double Length(double metres) { return metres / MetresPerLength; }
+            public double Area(double squareMetres) { return squareMetres / SquareMetresPerArea; }
+        }
+
+        private static readonly Dictionary<string, double> LengthFactors = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Meter", 1 }, { "Millimeter", 0.001 }, { "Centimeter", 0.01 }, { "Kilometer", 1000 }, { "Inch", 0.0254 }, { "Foot", 0.3048 }, { "Feet", 0.3048 }, { "Yard", 0.9144 }
+        };
+
+        private static readonly Dictionary<string, double> AreaFactors = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "SquareMeter", 1 }, { "SquareMillimeter", 1e-6 }, { "SquareCentimeter", 1e-4 }, { "SquareKilometer", 1e6 }, { "SquareInch", 0.00064516 },
+            { "SquareFeet", 0.09290304 }, { "SquareFoot", 0.09290304 }, { "SquareYard", 0.83612736 }
+        };
+
+        /// <summary>
+        /// The values of one element of a sized item. Revit gives a duct's Width and Height
+        /// as text in mm (mapped as 1000 for a metre) and no thickness or weight, so they
+        /// are written here from the size: Width, Height, Perimeter, sheet Thickness (by the
+        /// longest side) and, for straight ducts, Weight = sheet area x thickness x density.
+        /// The sheet area is Revit's duct Area (its outer surface), else perimeter x length.
+        /// Description1 = the size, Description2 = the sheet.
+        /// </summary>
+        private static void FillSized(TakeoffVariableCollection inputs, TakeoffLine line, DuctSheet sheet, ProjectUnits units)
+        {
+            units.Learn(inputs);
+            SetText(inputs, "Description1", line.Size);
+            DuctSize size = line.SizeOf;
+            if (size == null) return;
+
+            SetNumber(inputs, "ModelWidth", units.Length(size.Width / 1000.0));
+            SetNumber(inputs, "ModelHeight", units.Length(size.Height / 1000.0));
+
+            string category = line.Category;
+            if (category.EndsWith("Insulations", StringComparison.OrdinalIgnoreCase) || category.EndsWith("Linings", StringComparison.OrdinalIgnoreCase))
+            {
+                if (line.InsulationMm > 0) SetNumber(inputs, "ModelThickness", units.Length(line.InsulationMm / 1000.0));
+                return;
+            }
+            bool straight = string.Equals(category, "Ducts", StringComparison.OrdinalIgnoreCase);
+            bool fitting = string.Equals(category, "Duct Fittings", StringComparison.OrdinalIgnoreCase);
+            if (!straight && !fitting) return;
+
+            double thicknessMm = sheet.ThicknessFor(size.LongestSide);
+            SetNumber(inputs, "ModelThickness", units.Length(thicknessMm / 1000.0));
+            SetText(inputs, "Description2", "Sheet " + DuctSheet.Num(thicknessMm) + " mm (" + sheet.Standard + ")");
+            if (!straight) return;
+
+            SetNumber(inputs, "ModelPerimeter", units.Length(size.Perimeter / 1000.0));
+            double areaM2 = Number(Var(inputs, "ModelArea")) * units.SquareMetresPerArea;
+            if (areaM2 <= 0)
+            {
+                double lengthM = Number(Var(inputs, "ModelLength")) * units.MetresPerLength;
+                areaM2 = size.Perimeter / 1000.0 * lengthM;
+                if (areaM2 > 0) SetNumber(inputs, "ModelArea", units.Area(areaM2));
+            }
+            if (areaM2 > 0) SetNumber(inputs, "ModelWeight", sheet.WeightKg(areaM2, thicknessMm));
+        }
+
+        private static TakeoffVariable Var(TakeoffVariableCollection inputs, string name)
+        {
+            foreach (TakeoffVariable v in inputs)
+                if (string.Equals(v.Definition.Name, name, StringComparison.OrdinalIgnoreCase)) return v;
+            return null;
+        }
+
+        private static string UnitsOf(TakeoffVariable v)
+        {
+            try { return v == null || v.IsUnitsNull ? null : v.Units.ToString(); }
+            catch (Exception) { return null; }
+        }
+
+        private static double Number(TakeoffVariable v)
+        {
+            try
+            {
+                if (v == null || v.Value == null) return 0;
+                VariantData d = v.Value;
+                if (d.IsDouble) return d.ToDouble();
+                if (d.IsDoubleLength) return d.ToDoubleLength();
+                if (d.IsDoubleArea) return d.ToDoubleArea();
+                if (d.IsInt32) return d.ToInt32();
+                return 0;
+            }
+            catch (Exception) { return 0; }
+        }
+
+        private static void SetNumber(TakeoffVariableCollection inputs, string name, double value)
+        {
+            TakeoffVariable v = Var(inputs, name);
+            if (v != null && v.IsAbleToSetValue && !double.IsNaN(value) && !double.IsInfinity(value)) v.Value = VariantData.FromDouble(value);
+        }
+
+        private static void SetText(TakeoffVariableCollection inputs, string name, string value)
+        {
+            TakeoffVariable v = Var(inputs, name);
+            if (v != null && v.IsAbleToSetValue && !string.IsNullOrEmpty(value)) v.Value = VariantData.FromDisplayString(value);
         }
 
 
@@ -517,10 +701,14 @@ namespace MHToolsN.Services
             catch (Exception) { return -1; }
         }
 
+        /// <summary>The dimensions <see cref="Summary"/> averages instead of adding up.</summary>
+        public static readonly HashSet<string> PerPiece = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Width", "Height", "Thickness", "Perimeter" };
+
         /// <summary>
         /// The quantities as they are now: per item (with its group path), the number of
-        /// objects and the sums of the item's calculated variables (Length, Area, Volume,
-        /// Count...), in the Quantification project's units.
+        /// objects and the item's calculated variables - Length, Area, Volume, Weight,
+        /// Count summed, Width, Height, Thickness, Perimeter averaged (per piece) - in the
+        /// Quantification project's units.
         /// </summary>
         public static List<Dictionary<string, object>> Summary(Document doc, int limit)
         {
@@ -548,7 +736,11 @@ namespace MHToolsN.Services
 
             using (NavisworksCommand cmd = takeoff.Database.Value.CreateCommand())
             {
-                string sums = string.Join("", quantities.Select(q => ", SUM(o." + q.ValueDbColumnName + ")"));
+                // Dimensions are a piece's own (the same for every piece of a size): their
+                // average over the pieces that have one; the rest add up.
+                string sums = string.Join("", quantities.Select(q => PerPiece.Contains(q.Name)
+                    ? ", AVG(NULLIF(o." + q.ValueDbColumnName + ", 0))"
+                    : ", SUM(o." + q.ValueDbColumnName + ")"));
                 cmd.CommandText = "SELECT i." + takeoff.Items.RowId.Name + ", i." + takeoff.Items.Parent.Name + ", i." + takeoff.Items.Name.Name +
                                   ", COUNT(o." + takeoff.Objects.RowId.Name + ")" + sums +
                                   " FROM " + takeoff.Items.DbTableName + " i LEFT JOIN " + takeoff.Objects.DbTableName + " o ON o." + takeoff.Objects.Parent.Name +
@@ -567,13 +759,14 @@ namespace MHToolsN.Services
                         var row = new Dictionary<string, object>
                         {
                             { "group", string.Join(" / ", path) },
+                            { "path", path },
                             { "item", r.IsDBNull(2) ? "" : Convert.ToString(r.GetValue(2)) },
                             { "objects", Convert.ToInt64(r.GetValue(3)) }
                         };
                         for (int q = 0; q < quantities.Count; q++)
                         {
                             object v = r.GetValue(4 + q);
-                            if (v != null && v != DBNull.Value) row[quantities[q].DisplayName] = Math.Round(Convert.ToDouble(v), 3);
+                            if (v != null && v != DBNull.Value) row[quantities[q].DisplayName] = Math.Round(Convert.ToDouble(v), 6);
                         }
                         rows.Add(row);
                     }

@@ -416,8 +416,10 @@ namespace MHToolsN.AgentServer
 
         [McpServerTool(Name = "preview_takeoff", ReadOnly = true, Idempotent = true),
          Description("What apply_takeoff would add to Quantification, without changing anything. The structure: an item group per discipline " +
-                     "(from the file: AR, ST, MEC, EL, ICT...), one per Revit category under it, one item per Revit type, holding that type's elements. " +
-                     "Navisworks works out Length, Area, Volume and Count from the elements. Elements already taken off are counted, not added again. " +
+                     "(from the file: AR, ST, MEC, EL, ICT...), one per Revit category under it, one item per Revit type, holding that type's elements; " +
+                     "ducts, duct fittings, duct accessories and duct insulation are itemized by size for the factory: a group per Revit type, an item per size " +
+                     "(\"1000 x 700\"), with Width, Height, Perimeter, sheet Thickness (DW/144 by the longest side, editable in the Quantities window) and, for " +
+                     "ducts, Weight = sheet area x thickness x 7850 kg/m3. Navisworks works out Length, Area, Volume and Count from the elements.Elements already taken off are counted, not added again. " +
                      "categories: only these Revit categories (e.g. [\"Ducts\",\"Pipes\"]); disciplines: only files of these (e.g. [\"MEC\"]); " +
                      "model: only files whose name contains this. Non-physical categories (rooms, grids, levels, annotation) are left out. " +
                      "limit: how many items (types) to list.")]

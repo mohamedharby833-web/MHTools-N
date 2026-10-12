@@ -423,7 +423,30 @@ dragging elements onto catalog items does, for every type at once:
 
 - **Item groups:** one per discipline (from the file, as Clash Matrix decides it:
   `MECHANICAL - MEC`, ...), and under it one per Revit category (Ducts, Duct Fittings...).
-- **Items:** one per Revit type, holding that type's elements. Navisworks maps each
+- **Ductwork by size (for the factory):** Ducts, Duct Fittings, Duct Accessories and
+  Duct Insulations get an item group per Revit type and **an item per size**
+  (`1000 x 700`, `Ø250`, a taper `800 x 400 - 600 x 400`, insulation `650 x 300 - 25 mm`).
+  Revit gives a duct's Width/Height as text in mm and no thickness or weight, so each
+  element gets, in metres: Width, Height, Perimeter `2(W+H)` (or πD), sheet **Thickness**
+  by the longest side, and for straight ducts **Weight = sheet area × thickness ×
+  density × (1 + allowance)**, the sheet area being Revit's duct Area (outer surface).
+  Description1 = the size, Description2 = the sheet. The rule is the **Duct sheet** row of
+  the Take off tab (`%AppData%\MHTools-N\DuctSheet.txt`); defaults - provisional, check
+  them against the project spec:
+
+  | Longest side | Sheet (DW/144) |
+  |---|---|
+  | up to 600 mm | 0.6 mm |
+  | 601-750 mm | 0.8 mm |
+  | 751-1250 mm | 1.0 mm |
+  | 1251-2500 mm | 1.2 mm |
+
+  Galvanised steel 7850 kg/m³, allowance 0 %. Fittings and accessories: count and
+  sheet thickness, no weight (Revit gives them no area).
+- **Export Excel:** the factory workbook - Ductwork (type, size, W, H, pieces, length,
+  perimeter, sheet, sheet area, weight, totals), Fittings and accessories, Insulation,
+  All items, Sheet rule.
+- **Items:** otherwise one per Revit type, holding that type's elements. Navisworks maps each
   element's properties (Length, Area, Volume...) and works out the quantities; items
   use the table's own formulas (`=ModelLength`, `=ModelArea`, ..., `Count = 1`).
 - **Scan Model** lists each discipline's categories with their types and elements;
