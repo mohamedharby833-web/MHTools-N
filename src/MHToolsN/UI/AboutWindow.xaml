@@ -39,6 +39,10 @@
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
                        Text="Clash Detective results to an Excel workbook and a PDF report: a summary per test and status, then every clash with its two elements, distance, location and a picture." />
 
+            <TextBlock Style="{DynamicResource MhStrongText}" Text="AI Bridge" Margin="0,0,0,1" />
+            <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       Text="Connects an AI app (Claude, Cursor, Codex...) to this Navisworks through MCP. Agent Bridge starts or stops it; Connect AI App sets the app up in one click; Trusted C# (off by default) lets the app run code it writes. The app can read the model, its sets, viewpoints and clash results, and see pictures of the view and of each clash. Nothing is saved by the bridge." />
+
             <Border Style="{DynamicResource MhNotePanel}" Margin="0,4,0,0">
                 <StackPanel>
                     <TextBlock x:Name="BuildText" Style="{DynamicResource MhMonoText}" TextWrapping="Wrap" />
