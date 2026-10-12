@@ -415,3 +415,29 @@ change - Trusted C# Off refuses, **Ask shows the user the code** and runs it onl
 Yes, Auto logs it. `wrap=true` makes the run one undo step; `dryRun=true` undoes it
 right after and reports whether the undo took. Not sandboxed; the file is never saved
 by the bridge. `MHTools-N.AgentServer.exe --compile-test 2027` proves a PC can compile.
+
+## Quantities
+
+**MHTools-N → Quantities** fills Navisworks **Quantification** from the model, the way
+dragging elements onto catalog items does, for every type at once:
+
+- **Item groups:** one per discipline (from the file, as Clash Matrix decides it:
+  `MECHANICAL - MEC`, ...), and under it one per Revit category (Ducts, Duct Fittings...).
+- **Items:** one per Revit type, holding that type's elements. Navisworks maps each
+  element's properties (Length, Area, Volume...) and works out the quantities; items
+  use the table's own formulas (`=ModelLength`, `=ModelArea`, ..., `Count = 1`).
+- **Scan Model** lists each discipline's categories with their types and elements;
+  untick what not to take off; **Take Off**. The **Quantities** tab shows the sums per item.
+- **Again after a model update:** only elements not yet taken off are added (by GUID);
+  groups and items of the same name are reused, never changed or removed.
+- **One Undo (Ctrl+Z)** removes the whole takeoff again.
+- Quantification must be set up first (Navisworks: Quantification > **Project Setup**,
+  a catalog and the units).
+- Through the AI Bridge: `preview_takeoff`, `apply_takeoff`, `get_takeoff_summary`.
+
+Found on a live model (Navisworks 2027) and built in: the takeoff must map the
+element's properties first (`MapModelItemPropertiesToInputVariables`) or every quantity
+stays empty; quantities are calculated when the database transaction commits; the
+item table needs WBS, Transparency, Color, LineThickness, CountSymbol and CountSize.
+Example (Waste Building, MEC ducts): 597 elements, 17 items, in about 0.1 s - Ducts
+140.46 m / 248.34 m², Duct Insulations 102.09 m / 191.19 m² / 4.78 m³.

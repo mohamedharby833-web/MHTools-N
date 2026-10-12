@@ -34,7 +34,6 @@ namespace MHToolsN.Services
         public int ItemsCreated;
         public int ObjectsAdded;
         public int Failed;
-        public int ItemsWithFormulas;
         public List<string> Errors = new List<string>();
     }
 
@@ -157,82 +156,52 @@ namespace MHToolsN.Services
             var result = new TakeoffResult();
             int total = Math.Max(1, plan.ToAdd), done = 0;
 
-            using (NavisworksTransaction tx = takeoff.Database.BeginTransaction(DatabaseChangedAction.Edited))
+            // Found live (Navisworks 2027, through Trusted C#):
+            // - InsertModelItemTakeoff(item, element) alone leaves every quantity empty;
+            //   the element's properties must be mapped to the input variables first
+            //   (MapModelItemPropertiesToInputVariables) and passed in.
+            // - The quantities are calculated when the database transaction commits.
+            // - Inside a Navisworks transaction the whole takeoff is one undo step:
+            //   Ctrl+Z removes the groups, items and objects again.
+            // - An item's formulas default to =ModelLength, =ModelArea... (=1 for Count)
+            //   in the table itself: nothing to set.
+            using (Transaction undo = doc.BeginTransaction("MHTools-N: Quantification takeoff"))
             {
-                var writer = new TableWriter(tx.Connection, takeoff);
-                foreach (TakeoffLine line in plan.Lines.Where(l => l.ToAdd.Count > 0))
+                using (NavisworksTransaction tx = takeoff.Database.BeginTransaction(DatabaseChangedAction.Edited))
                 {
-                    long top = writer.Group(null, line.DisciplineName, ref result.GroupsCreated);
-                    long cat = writer.Group(top, line.Category, ref result.GroupsCreated);
-                    int before = result.ItemsCreated;
-                    long item = writer.Item(cat, line.Type, ref result.ItemsCreated);
-                    if (result.ItemsCreated > before)
+                    var writer = new TableWriter(tx.Connection, takeoff);
+                    foreach (TakeoffLine line in plan.Lines.Where(l => l.ToAdd.Count > 0))
                     {
-                        string formulaError = ModelFormulas(takeoff, item);
-                        if (formulaError == null) result.ItemsWithFormulas++;
-                        else if (result.Errors.Count < 10) result.Errors.Add("Formulas on " + line.Type + ": " + formulaError);
-                    }
+                        long top = writer.Group(null, line.DisciplineName, ref result.GroupsCreated);
+                        long cat = writer.Group(top, line.Category, ref result.GroupsCreated);
+                        long item = writer.Item(cat, line.Type, line.Category, ref result.ItemsCreated);
 
-                    foreach (ModelItem element in line.ToAdd)
-                    {
-                        if (progress != null) progress.Report(done++ / (double)total);
-                        try
+                        foreach (ModelItem element in line.ToAdd)
                         {
-                            takeoff.Objects.InsertModelItemTakeoff(item, element);
-                            result.ObjectsAdded++;
-                        }
-                        catch (Exception ex)
-                        {
-                            result.Failed++;
-                            if (result.Errors.Count < 10) result.Errors.Add(line.Type + ": " + ex.Message);
+                            if (progress != null) progress.Report(done++ / (double)total);
+                            try
+                            {
+                                TakeoffVariableCollection inputs = takeoff.Objects.CreateDefaultInputVariables();
+                                takeoff.Objects.MapModelItemPropertiesToInputVariables(item, element, inputs);
+                                takeoff.Objects.InsertModelItemTakeoff(item, element.InstanceGuid, inputs, false);
+                                result.ObjectsAdded++;
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Failed++;
+                                if (result.Errors.Count < 10) result.Errors.Add(line.Type + ": " + ex.Message);
+                            }
                         }
                     }
+                    tx.Commit();
                 }
-                tx.Commit();
+                undo.Commit();
             }
             Watchdog.Log("Quantification: groups +" + result.GroupsCreated + ", items +" + result.ItemsCreated + ", objects +" + result.ObjectsAdded +
                          (result.Failed > 0 ? ", failed " + result.Failed + " (" + string.Join("; ", result.Errors) + ")" : ""));
             return result;
         }
 
-        /// <summary>
-        /// A new item's calculated quantities (Length, Area, Volume...) taken from the
-        /// measured model values ("=ModelLength"...), as a catalog item does - where the
-        /// item has no formula of its own yet and an input variable "Model" + name exists.
-        /// </summary>
-        /// <returns>null when done, else what went wrong.</returns>
-        private static string ModelFormulas(DocumentTakeoff takeoff, long itemRowId)
-        {
-            try
-            {
-                var inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (TakeoffVariableDefinition d in takeoff.Objects.Variables)
-                    if (d.Purpose == Purpose.Input && !string.IsNullOrEmpty(d.Name))
-                        inputs[d.Name] = string.IsNullOrEmpty(d.DisplayNameForFormulaUsage) ? d.Name : d.DisplayNameForFormulaUsage;
-
-                // On an ITEM the quantities are Rollup variables (seen in 2027: Length,
-                // Area, Volume, Count... all Purpose.Rollup); their formula is what each
-                // of the item's objects calculates. So no filter on Purpose here.
-                TakeoffVariableCollection vars = takeoff.Items.SelectVariables(itemRowId);
-                bool changed = false;
-                foreach (TakeoffVariable v in vars)
-                {
-                    if (v.Definition == null || v.Definition.VariableType != VariableType.Number || !v.IsAbleToSetFormula || !v.IsFormulaNull) continue;
-                    string model;
-                    if (inputs.TryGetValue("Model" + v.Definition.Name, out model)) v.Formula = "=" + model;
-                    else if (string.Equals(v.Definition.Name, "Count", StringComparison.OrdinalIgnoreCase)) v.Formula = "=1";
-                    else continue;
-                    changed = true;
-                }
-                if (changed) takeoff.Items.UpdateVariables(itemRowId, vars);
-                return changed ? null : "no quantity variable on the item takes a formula";
-            }
-            catch (Exception ex)
-            {
-                Watchdog.Log("Quantification: model formulas on item " + itemRowId + " not set: " + ex.Message);
-                return ex.GetType().Name + ": " + ex.Message;
-            }
-        }
 
         // ---------------------------------------------------------- the tables
 
@@ -254,6 +223,7 @@ namespace MHToolsN.Services
                 public readonly Dictionary<long, string> WbsOf = new Dictionary<long, string>();
                 public readonly HashSet<string> UsedWbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 public readonly Dictionary<string, object> Required = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                public readonly HashSet<string> Columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
 
             private readonly NavisworksConnection _connection;
@@ -275,12 +245,30 @@ namespace MHToolsN.Services
                 return Ensure(_groups, parent, name, ref created);
             }
 
-            public long Item(long parent, string name, ref int created)
+            /// <summary>
+            /// An item. TK_Item has NOT NULL display columns with no default (seen in 2027:
+            /// Transparency, Color, LineThickness, CountSymbol, CountSize): given here as
+            /// Quantification shows a new item - half see-through, a colour per category.
+            /// </summary>
+            public long Item(long parent, string name, string category, ref int created)
             {
-                return Ensure(_items, parent, name, ref created);
+                var looks = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "Transparency", 0.5 }, { "Color", ColourFor(category) }, { "LineThickness", 1.0 }, { "CountSymbol", 0L }, { "CountSize", 1.0 }
+                };
+                return Ensure(_items, parent, name, ref created, looks);
             }
 
-            private long Ensure(Table t, long? parent, string name, ref int created)
+            /// <summary>A steady colour per category (the same every run), from a palette that reads on a model.</summary>
+            private static long ColourFor(string category)
+            {
+                int[] palette = { 0xE53935, 0x1E88E5, 0x43A047, 0xFB8C00, 0x8E24AA, 0x00ACC1, 0xFDD835, 0xD81B60, 0x6D4C41, 0x3949AB, 0x7CB342, 0x00897B };
+                int hash = 0;
+                foreach (char ch in category ?? "") hash = unchecked(hash * 31 + char.ToUpperInvariant(ch));
+                return palette[(hash & 0x7FFFFFFF) % palette.Length];
+            }
+
+            private long Ensure(Table t, long? parent, string name, ref int created, Dictionary<string, object> extra = null)
             {
                 string key = (parent.HasValue ? parent.Value.ToString() : "") + "|" + name;
                 long id;
@@ -288,6 +276,7 @@ namespace MHToolsN.Services
 
                 string wbs = NextWbs(t, parent);
                 var values = new Dictionary<string, object>(t.Required, StringComparer.OrdinalIgnoreCase);
+                if (extra != null) foreach (var pair in extra) if (t.Columns.Contains(pair.Key)) values[pair.Key] = pair.Value;
                 values[t.Parent] = parent.HasValue ? (object)parent.Value : DBNull.Value;
                 values[t.Name] = name;
                 if (!string.IsNullOrEmpty(t.Wbs)) values[t.Wbs] = wbs;
@@ -333,7 +322,8 @@ namespace MHToolsN.Services
                     n = _rootGroups;
                 }
                 string candidate;
-                do { candidate = prefix + (++n); }
+                // Two digits, as the catalog numbers its groups (01, 02 ... 16).
+                do { candidate = prefix + (++n).ToString("00"); }
                 while (t.UsedWbs.Contains(candidate) || (t == _items && _groups.UsedWbs.Contains(candidate)) || (t == _groups && _items.UsedWbs.Contains(candidate)));
                 return candidate;
             }
@@ -400,6 +390,7 @@ namespace MHToolsN.Services
                             while (r.Read())
                             {
                                 string column = Convert.ToString(r.GetValue(1));
+                                t.Columns.Add(column);
                                 string type = Convert.ToString(r.GetValue(2));
                                 bool notNull = Convert.ToInt64(r.GetValue(3)) != 0;
                                 bool hasDefault = !r.IsDBNull(4);

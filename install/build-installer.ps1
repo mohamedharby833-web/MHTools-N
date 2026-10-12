@@ -116,7 +116,7 @@ New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 # filename from the plugin folder.
 $icons     = @('ClashMatrix16.png', 'ClashMatrix32.png', 'ExportResults16.png', 'ExportResults32.png',
                'AgentBridge16.png', 'AgentBridge32.png', 'TrustedCode16.png', 'TrustedCode32.png',
-               'ConnectAi16.png', 'ConnectAi32.png', 'About16.png', 'About32.png')
+               'ConnectAi16.png', 'ConnectAi32.png', 'Quantities16.png', 'Quantities32.png', 'About16.png', 'About32.png')
 $shipFiles = @('MHTools-N.dll', 'AddinRibbon.xaml') + $icons
 
 foreach ($year in $targets.Keys) {

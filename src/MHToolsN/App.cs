@@ -23,6 +23,10 @@ namespace MHToolsN
         Icon = "ExportResults16.png",
         LargeIcon = "ExportResults32.png",
         ToolTip = "Export clash results to Excel and a PDF report")]
+    [Command("MHToolsN.Quantities",
+        Icon = "Quantities16.png",
+        LargeIcon = "Quantities32.png",
+        ToolTip = "Fill Navisworks Quantification from the model: an item per Revit type, by discipline and category")]
     [Command("MHToolsN.AgentBridge",
         Icon = "AgentBridge16.png",
         LargeIcon = "AgentBridge32.png",
@@ -72,6 +76,9 @@ namespace MHToolsN
             {
                 switch (name)
                 {
+                    case "MHToolsN.Quantities":
+                        Commands.ClashMatrixCommand.Quantities(parameters);
+                        break;
                     case "MHToolsN.AgentBridge":
                         Commands.AgentBridgeCommand.Toggle(parameters);
                         break;

@@ -69,7 +69,6 @@ namespace MHToolsN.Bridge
                 { "itemGroupsCreated", result.GroupsCreated },
                 { "itemsCreated", result.ItemsCreated },
                 { "objectsTakenOff", result.ObjectsAdded },
-                { "itemsWithModelFormulas", result.ItemsWithFormulas },
                 { "failed", result.Failed },
                 { "errors", result.Errors },
                 { "next", "get_takeoff_summary shows the quantities. In Navisworks: Quantification workbook (Item view)." }

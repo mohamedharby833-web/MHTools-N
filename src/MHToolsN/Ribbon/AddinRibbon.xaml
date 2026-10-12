@@ -33,6 +33,20 @@
             </RibbonPanelSource>
         </RibbonPanel>
 
+        <RibbonPanel x:Uid="RibbonPanel_Quantities">
+            <RibbonPanelSource x:Uid="RibbonPanelSource_Quantities" KeyTip="Q1" Title="Quantities">
+
+                <local:NWRibbonButton x:Uid="MHToolsN Quantities" Id="MHToolsN.Quantities"
+                            Size="Large"
+                            KeyTip="Q"
+                            ShowText="True"
+                            Text="Quantities"
+                            Orientation="Vertical"
+                />
+
+            </RibbonPanelSource>
+        </RibbonPanel>
+
         <RibbonPanel x:Uid="RibbonPanel_AiBridge">
             <RibbonPanelSource x:Uid="RibbonPanelSource_AiBridge" KeyTip="B1" Title="AI Bridge">
 

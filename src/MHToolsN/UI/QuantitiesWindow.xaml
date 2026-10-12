@@ -1,0 +1,113 @@
+<Window x:Class="MHToolsN.UI.QuantitiesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:MHToolsN.UI"
+        Title="Quantities"
+        Width="980" Height="760" MinWidth="820" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <!-- The look comes from UI/MhTheme.cs and UI/Theme.xaml (MhTheme.Apply in the
+         code-behind), hence DynamicResource; this file sets layout only. -->
+
+    <Grid>
+        <Grid.Resources>
+            <Style x:Key="CellText" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+            </Style>
+            <Style x:Key="NumberText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="Margin" Value="0,0,8,0" />
+            </Style>
+        </Grid.Resources>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:MhHeader Grid.Row="0" Title="Quantities"
+                     Subtitle="Fills Navisworks Quantification from the model: an item group per discipline and Revit category, an item per Revit type." />
+
+        <Grid Grid.Row="1" Margin="20,14,20,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border x:Name="NotReadyPanel" Grid.Row="0" Style="{DynamicResource MhNotePanel}" Margin="0,0,0,12" Visibility="Collapsed">
+                <TextBlock x:Name="NotReadyText" Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" />
+            </Border>
+
+            <DockPanel Grid.Row="1" Margin="0,0,0,10" LastChildFill="True">
+                <Button x:Name="ScanButton" DockPanel.Dock="Left" Style="{DynamicResource MhCompactButton}" Content="Scan Model"
+                        Click="OnScan" ToolTip="Read the model's elements by discipline, Revit category and type." />
+                <TextBlock x:Name="ScanText" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
+                           Text="Scan the model, untick what not to take off, then Take Off." />
+            </DockPanel>
+
+            <TabControl Grid.Row="2" x:Name="Tabs">
+                <TabItem Header="Take off">
+                    <Border Style="{DynamicResource MhTableFrame}" Margin="0,8,0,0">
+                        <DataGrid x:Name="CategoriesGrid" BorderThickness="0" AutoGenerateColumns="False"
+                                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Extended">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="44" CanUserResize="False" SortMemberPath="Include">
+                                    <DataGridTemplateColumn.Header>
+                                        <CheckBox x:Name="AllBox" Margin="2,0,0,0" Click="OnAll" ToolTip="Tick or untick every row." />
+                                    </DataGridTemplateColumn.Header>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0"
+                                                      IsChecked="{Binding Include, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Click="OnRowTicked" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Discipline" Width="170" IsReadOnly="True" Binding="{Binding DisciplineName}" ElementStyle="{StaticResource CellText}" />
+                                <DataGridTextColumn Header="Revit category" Width="*" IsReadOnly="True" Binding="{Binding Category}" ElementStyle="{StaticResource CellText}" />
+                                <DataGridTextColumn Header="Types (items)" Width="100" IsReadOnly="True" Binding="{Binding Types}" ElementStyle="{StaticResource NumberText}" />
+                                <DataGridTextColumn Header="Elements" Width="90" IsReadOnly="True" Binding="{Binding Elements}" ElementStyle="{StaticResource NumberText}" />
+                                <DataGridTextColumn Header="To take off" Width="100" IsReadOnly="True" Binding="{Binding ToAdd}" ElementStyle="{StaticResource NumberText}" />
+                                <DataGridTextColumn Header="Already" Width="80" IsReadOnly="True" Binding="{Binding Already}" ElementStyle="{StaticResource NumberText}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+                </TabItem>
+                <TabItem Header="Quantities">
+                    <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Bottom" Style="{DynamicResource MhMutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Sums per Quantification item, in the units chosen at Project Setup. Edit or report them in Navisworks' Quantification workbook." />
+                        <Border Style="{DynamicResource MhTableFrame}">
+                            <DataGrid x:Name="QuantitiesGrid" BorderThickness="0" AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Group" Width="230" Binding="{Binding Group}" ElementStyle="{StaticResource CellText}" />
+                                    <DataGridTextColumn Header="Item (Revit type)" Width="*" Binding="{Binding Item}" ElementStyle="{StaticResource CellText}" />
+                                    <DataGridTextColumn Header="Objects" Width="70" Binding="{Binding Objects}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Length" Width="90" Binding="{Binding Length}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Area" Width="90" Binding="{Binding Area}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Volume" Width="90" Binding="{Binding Volume}" ElementStyle="{StaticResource NumberText}" />
+                                    <DataGridTextColumn Header="Count" Width="70" Binding="{Binding Count}" ElementStyle="{StaticResource NumberText}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+        </Grid>
+
+        <ui:MhFooter x:Name="Footer" Grid.Row="2">
+            <ui:MhFooter.Actions>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="TakeOffButton" Style="{DynamicResource MhPrimaryButton}" Content="Take Off" Click="OnTakeOff" Margin="0,0,8,0"
+                            ToolTip="Create the missing item groups and items and take off the ticked elements. One Undo (Ctrl+Z) reverts it." />
+                    <Button Content="Close" Click="OnClose" IsCancel="True" />
+                </StackPanel>
+            </ui:MhFooter.Actions>
+        </ui:MhFooter>
+    </Grid>
+</Window>

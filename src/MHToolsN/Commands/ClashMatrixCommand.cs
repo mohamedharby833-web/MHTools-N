@@ -28,6 +28,18 @@ namespace MHToolsN.Commands
             ShowOwned(new ExportResultsWindow(document));
         }
 
+        /// <summary>Quantities: fills Navisworks Quantification from the model.</summary>
+        public static void Quantities(string[] parameters)
+        {
+            Document document = NavisApp.ActiveDocument;
+            if (document == null || document.IsClear)
+            {
+                MessageBox.Show("Open the coordination model first.", "Quantities", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            ShowOwned(new QuantitiesWindow(document));
+        }
+
         public static void About(string[] parameters)
         {
             ShowOwned(new AboutWindow(HostDescription()));

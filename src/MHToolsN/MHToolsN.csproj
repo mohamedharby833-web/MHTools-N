@@ -28,7 +28,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <Version>2.5.0</Version>
+    <Version>2.6.0</Version>
     <Company>Mohamed Ali Harby</Company>
     <Product>MHTools-N</Product>
     <Copyright>Copyright (c) 2026 Mohamed Ali Harby. MIT licence.</Copyright>
@@ -184,6 +184,8 @@
     <None Include="Resources\ExportResults32.png" CopyToOutputDirectory="PreserveNewest" Link="ExportResults32.png" />
     <None Include="Resources\About16.png" CopyToOutputDirectory="PreserveNewest" Link="About16.png" />
     <None Include="Resources\About32.png" CopyToOutputDirectory="PreserveNewest" Link="About32.png" />
+    <None Include="Resources\Quantities16.png" CopyToOutputDirectory="PreserveNewest" Link="Quantities16.png" />
+    <None Include="Resources\Quantities32.png" CopyToOutputDirectory="PreserveNewest" Link="Quantities32.png" />
     <None Include="Resources\AgentBridge16.png" CopyToOutputDirectory="PreserveNewest" Link="AgentBridge16.png" />
     <None Include="Resources\AgentBridge32.png" CopyToOutputDirectory="PreserveNewest" Link="AgentBridge32.png" />
     <None Include="Resources\TrustedCode16.png" CopyToOutputDirectory="PreserveNewest" Link="TrustedCode16.png" />
