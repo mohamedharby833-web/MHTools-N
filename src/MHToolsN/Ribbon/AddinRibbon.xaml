@@ -18,7 +18,7 @@
                             Size="Large"
                             KeyTip="M"
                             ShowText="True"
-                            Text="Clash Matrix"
+                            Text="Clash&#10;Matrix"
                             Orientation="Vertical"
                 />
 
@@ -26,7 +26,7 @@
                             Size="Large"
                             KeyTip="E"
                             ShowText="True"
-                            Text="Export Results"
+                            Text="Export&#10;Results"
                             Orientation="Vertical"
                 />
 
@@ -54,7 +54,7 @@
                             Size="Large"
                             KeyTip="B"
                             ShowText="True"
-                            Text="Agent Bridge"
+                            Text="Agent Bridge&#10;Off"
                             Orientation="Vertical"
                 />
 
@@ -62,7 +62,7 @@
                             Size="Large"
                             KeyTip="T"
                             ShowText="True"
-                            Text="Trusted C#"
+                            Text="Trusted C#&#10;Off"
                             Orientation="Vertical"
                 />
 
@@ -70,7 +70,7 @@
                             Size="Large"
                             KeyTip="I"
                             ShowText="True"
-                            Text="Connect AI App"
+                            Text="Connect&#10;AI"
                             Orientation="Vertical"
                 />
 

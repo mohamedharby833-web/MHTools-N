@@ -57,13 +57,14 @@ namespace MHToolsN
                 if (name == "MHToolsN.AgentBridge")
                 {
                     state.IsChecked = Commands.AgentBridgeCommand.IsRunning;
-                    state.OverrideDisplayName = Commands.AgentBridgeCommand.IsRunning ? "Agent Bridge On" : "Agent Bridge Off";
+                    // Two lines, as in MHTools-R: the name, then the state.
+                    state.OverrideDisplayName = Commands.AgentBridgeCommand.IsRunning ? "Agent Bridge\nOn" : "Agent Bridge\nOff";
                 }
                 else if (name == "MHToolsN.TrustedCode")
                 {
                     string mode = Commands.AgentBridgeCommand.CodeModeName;
                     state.IsChecked = mode != "off";
-                    state.OverrideDisplayName = mode == "ask" ? "Trusted C# On (Ask)" : mode == "auto" ? "Trusted C# On (Auto)" : "Trusted C# Off";
+                    state.OverrideDisplayName = mode == "ask" ? "Trusted C#\nOn (Ask)" : mode == "auto" ? "Trusted C#\nOn (Auto)" : "Trusted C#\nOff";
                 }
             }
             catch (Exception) { }
