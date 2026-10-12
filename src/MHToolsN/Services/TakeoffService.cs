@@ -155,18 +155,17 @@ namespace MHToolsN.Services
 
             DocumentTakeoff takeoff = Takeoff(doc);
             var result = new TakeoffResult();
-            var groupIds = ExistingRows(doc, takeoff.ItemGroups, takeoff.ItemGroups.Parent.Name, takeoff.ItemGroups.Name.Name);
-            var itemIds = ExistingRows(doc, takeoff.Items, takeoff.Items.Parent.Name, takeoff.Items.Name.Name);
             int total = Math.Max(1, plan.ToAdd), done = 0;
 
             using (NavisworksTransaction tx = takeoff.Database.BeginTransaction(DatabaseChangedAction.Edited))
             {
+                var writer = new TableWriter(tx.Connection, takeoff);
                 foreach (TakeoffLine line in plan.Lines.Where(l => l.ToAdd.Count > 0))
                 {
-                    long top = EnsureRow(tx, takeoff.ItemGroups, groupIds, null, line.DisciplineName, ref result.GroupsCreated);
-                    long cat = EnsureRow(tx, takeoff.ItemGroups, groupIds, top, line.Category, ref result.GroupsCreated);
+                    long top = writer.Group(null, line.DisciplineName, ref result.GroupsCreated);
+                    long cat = writer.Group(top, line.Category, ref result.GroupsCreated);
                     int before = result.ItemsCreated;
-                    long item = EnsureRow(tx, takeoff.Items, itemIds, cat, line.Type, ref result.ItemsCreated);
+                    long item = writer.Item(cat, line.Type, ref result.ItemsCreated);
                     if (result.ItemsCreated > before)
                     {
                         string formulaError = ModelFormulas(takeoff, item);
@@ -237,74 +236,217 @@ namespace MHToolsN.Services
 
         // ---------------------------------------------------------- the tables
 
-        /// <summary>The rows of an item-group / item table, by (parent, name) -> row id.</summary>
-        private static Dictionary<string, long> ExistingRows(Document doc, TakeoffTable table, string parentColumn, string nameColumn)
+        /// <summary>
+        /// Adds item groups and items, inside one open database transaction. The tables
+        /// have NOT NULL columns of their own (WBS - seen in 2027 - and maybe more), so
+        /// the columns come from the table itself (PRAGMA table_info): WBS is numbered
+        /// as Quantification numbers it (1, 1.2, 1.2.3) after what is there; any other
+        /// required column takes the value of an existing row of that table (the
+        /// catalog's), or a neutral 0 / "" when the table is empty.
+        /// </summary>
+        private sealed class TableWriter
         {
-            var rows = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-            using (NavisworksCommand cmd = Takeoff(doc).Database.Value.CreateCommand())
+            private sealed class Table
             {
-                cmd.CommandText = "SELECT " + table.RowId.Name + ", " + parentColumn + ", " + nameColumn + " FROM " + table.DbTableName;
-                using (var reader = cmd.ExecuteReader())
+                public TakeoffTable Def;
+                public string Parent, Name, Wbs;
+                public readonly Dictionary<string, long> ByKey = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                public readonly Dictionary<long, string> WbsOf = new Dictionary<long, string>();
+                public readonly HashSet<string> UsedWbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                public readonly Dictionary<string, object> Required = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            private readonly NavisworksConnection _connection;
+            private readonly Table _groups, _items;
+
+            // Children under each group (groups and items share one WBS sequence), and at the root.
+            private readonly Dictionary<long, int> _children = new Dictionary<long, int>();
+            private int _rootGroups;
+
+            public TableWriter(NavisworksConnection connection, DocumentTakeoff takeoff)
+            {
+                _connection = connection;
+                _groups = Read(takeoff.ItemGroups, takeoff.ItemGroups.Parent.Name, takeoff.ItemGroups.Name.Name, takeoff.ItemGroups.WBS.Name, true);
+                _items = Read(takeoff.Items, takeoff.Items.Parent.Name, takeoff.Items.Name.Name, takeoff.Items.WBS.Name, false);
+            }
+
+            public long Group(long? parent, string name, ref int created)
+            {
+                return Ensure(_groups, parent, name, ref created);
+            }
+
+            public long Item(long parent, string name, ref int created)
+            {
+                return Ensure(_items, parent, name, ref created);
+            }
+
+            private long Ensure(Table t, long? parent, string name, ref int created)
+            {
+                string key = (parent.HasValue ? parent.Value.ToString() : "") + "|" + name;
+                long id;
+                if (t.ByKey.TryGetValue(key, out id)) return id;
+
+                string wbs = NextWbs(t, parent);
+                var values = new Dictionary<string, object>(t.Required, StringComparer.OrdinalIgnoreCase);
+                values[t.Parent] = parent.HasValue ? (object)parent.Value : DBNull.Value;
+                values[t.Name] = name;
+                if (!string.IsNullOrEmpty(t.Wbs)) values[t.Wbs] = wbs;
+
+                using (NavisworksCommand cmd = _connection.CreateCommand())
                 {
-                    while (reader.Read())
+                    var names = values.Keys.ToList();
+                    cmd.CommandText = "INSERT INTO " + t.Def.DbTableName + " (" + string.Join(", ", names) + ") VALUES (" +
+                                      string.Join(", ", names.Select((n, i) => "@p" + i)) + ")";
+                    for (int i = 0; i < names.Count; i++) cmd.Parameters.AddWithValue("@p" + i, values[names[i]]);
+                    cmd.ExecuteNonQuery();
+                }
+                id = NewRowId(t);
+
+                t.ByKey[key] = id;
+                t.WbsOf[id] = wbs;
+                t.UsedWbs.Add(wbs);
+                if (parent.HasValue) _children[parent.Value] = Children(parent.Value) + 1;
+                else _rootGroups++;
+                created++;
+                return id;
+            }
+
+            private int Children(long group)
+            {
+                int n;
+                return _children.TryGetValue(group, out n) ? n : 0;
+            }
+
+            /// <summary>The parent group's WBS + ".n", or "n" at the root - the next n not used yet.</summary>
+            private string NextWbs(Table t, long? parent)
+            {
+                string prefix = "";
+                int n = 0;
+                if (parent.HasValue)
+                {
+                    string parentWbs;
+                    prefix = (_groups.WbsOf.TryGetValue(parent.Value, out parentWbs) && !string.IsNullOrEmpty(parentWbs) ? parentWbs : parent.Value.ToString()) + ".";
+                    n = Children(parent.Value);
+                }
+                else
+                {
+                    n = _rootGroups;
+                }
+                string candidate;
+                do { candidate = prefix + (++n); }
+                while (t.UsedWbs.Contains(candidate) || (t == _items && _groups.UsedWbs.Contains(candidate)) || (t == _groups && _items.UsedWbs.Contains(candidate)));
+                return candidate;
+            }
+
+            private long NewRowId(Table t)
+            {
+                try
+                {
+                    using (NavisworksCommand cmd = _connection.CreateCommand())
                     {
-                        long id = Convert.ToInt64(reader.GetValue(0));
-                        string parent = reader.IsDBNull(1) ? "" : Convert.ToString(reader.GetValue(1));
-                        string name = reader.IsDBNull(2) ? "" : Convert.ToString(reader.GetValue(2));
-                        string key = parent + "|" + name;
-                        if (!rows.ContainsKey(key)) rows[key] = id;
+                        cmd.CommandText = "SELECT last_insert_rowid()";
+                        long id = Convert.ToInt64(cmd.ExecuteScalar());
+                        if (id > 0) return id;
                     }
                 }
-            }
-            return rows;
-        }
-
-        private static long EnsureRow(NavisworksTransaction tx, TakeoffTable table, Dictionary<string, long> rows, long? parent, string name,
-            ref int created)
-        {
-            string key = (parent.HasValue ? parent.Value.ToString() : "") + "|" + name;
-            long id;
-            if (rows.TryGetValue(key, out id)) return id;
-
-            string parentColumn, nameColumn;
-            if (table is ItemGroupTable) { parentColumn = ((ItemGroupTable)table).Parent.Name; nameColumn = ((ItemGroupTable)table).Name.Name; }
-            else { parentColumn = ((ItemTable)table).Parent.Name; nameColumn = ((ItemTable)table).Name.Name; }
-
-            using (NavisworksCommand cmd = tx.Connection.CreateCommand())
-            {
-                // No cmd.Transaction = tx: NavisworksCommand throws NotImplementedException
-                // on it (seen in 2027). A command made from the open transaction's connection
-                // runs inside that transaction anyway.
-                cmd.CommandText = "INSERT INTO " + table.DbTableName + " (" + parentColumn + ", " + nameColumn + ") VALUES (@parent, @name)";
-                cmd.Parameters.AddWithValue("@parent", parent.HasValue ? (object)parent.Value : DBNull.Value);
-                cmd.Parameters.AddWithValue("@name", name);
-                cmd.ExecuteNonQuery();
-            }
-            id = 0;
-            try
-            {
-                using (NavisworksCommand cmd = tx.Connection.CreateCommand())
+                catch (Exception ex)
                 {
-                    cmd.CommandText = "SELECT last_insert_rowid()";
-                    id = Convert.ToInt64(cmd.ExecuteScalar());
+                    Watchdog.Log("Quantification: last_insert_rowid() not available (" + ex.Message + "); using MAX(row id).");
                 }
-            }
-            catch (Exception ex)
-            {
-                Watchdog.Log("Quantification: last_insert_rowid() not available (" + ex.Message + "); using MAX(row id).");
-            }
-            if (id <= 0)
-            {
                 // Inside our own open transaction, the newest row of the table is the one just added.
-                using (NavisworksCommand cmd = tx.Connection.CreateCommand())
+                using (NavisworksCommand cmd = _connection.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT MAX(" + table.RowId.Name + ") FROM " + table.DbTableName;
-                    id = Convert.ToInt64(cmd.ExecuteScalar());
+                    cmd.CommandText = "SELECT MAX(" + t.Def.RowId.Name + ") FROM " + t.Def.DbTableName;
+                    return Convert.ToInt64(cmd.ExecuteScalar());
                 }
             }
-            rows[key] = id;
-            created++;
-            return id;
+
+            private Table Read(TakeoffTable def, string parent, string name, string wbs, bool groups)
+            {
+                var t = new Table { Def = def, Parent = parent, Name = name, Wbs = wbs };
+
+                using (NavisworksCommand cmd = _connection.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT " + def.RowId.Name + ", " + parent + ", " + name + (string.IsNullOrEmpty(wbs) ? "" : ", " + wbs) + " FROM " + def.DbTableName;
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            long id = Convert.ToInt64(r.GetValue(0));
+                            long? p = r.IsDBNull(1) ? (long?)null : Convert.ToInt64(r.GetValue(1));
+                            string n = r.IsDBNull(2) ? "" : Convert.ToString(r.GetValue(2));
+                            string w = string.IsNullOrEmpty(wbs) || r.IsDBNull(3) ? "" : Convert.ToString(r.GetValue(3));
+                            string key = (p.HasValue ? p.Value.ToString() : "") + "|" + n;
+                            if (!t.ByKey.ContainsKey(key)) t.ByKey[key] = id;
+                            t.WbsOf[id] = w;
+                            if (w.Length > 0) t.UsedWbs.Add(w);
+                            if (p.HasValue) _children[p.Value] = Children(p.Value) + 1;
+                            else if (groups) _rootGroups++;
+                        }
+                    }
+                }
+
+                // Required columns: NOT NULL, no default, not the row id, not one we fill.
+                var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { def.RowId.Name, parent, name };
+                if (!string.IsNullOrEmpty(wbs)) skip.Add(wbs);
+                var required = new List<KeyValuePair<string, string>>();
+                try
+                {
+                    using (NavisworksCommand cmd = _connection.CreateCommand())
+                    {
+                        cmd.CommandText = "PRAGMA table_info(" + def.DbTableName + ")";
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            while (r.Read())
+                            {
+                                string column = Convert.ToString(r.GetValue(1));
+                                string type = Convert.ToString(r.GetValue(2));
+                                bool notNull = Convert.ToInt64(r.GetValue(3)) != 0;
+                                bool hasDefault = !r.IsDBNull(4);
+                                bool pk = Convert.ToInt64(r.GetValue(5)) != 0;
+                                if (notNull && !hasDefault && !pk && !skip.Contains(column)) required.Add(new KeyValuePair<string, string>(column, type));
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Watchdog.Log("Quantification: PRAGMA table_info(" + def.DbTableName + ") failed: " + ex.Message);
+                }
+                if (required.Count == 0) return t;
+
+                // A value for each: from an existing row when there is one, else neutral.
+                Dictionary<string, object> sample = null;
+                try
+                {
+                    using (NavisworksCommand cmd = _connection.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT " + string.Join(", ", required.Select(c => c.Key)) + " FROM " + def.DbTableName + " LIMIT 1";
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            if (r.Read())
+                            {
+                                sample = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                                for (int i = 0; i < required.Count; i++) sample[required[i].Key] = r.GetValue(i);
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { }
+
+                foreach (var c in required)
+                {
+                    object v;
+                    if (sample == null || !sample.TryGetValue(c.Key, out v) || v == null || v == DBNull.Value)
+                    {
+                        string type = (c.Value ?? "").ToUpperInvariant();
+                        v = type.Contains("INT") ? (object)0L : type.Contains("REAL") || type.Contains("FLOA") || type.Contains("DOUB") ? (object)0.0 : "";
+                    }
+                    t.Required[c.Key] = v;
+                }
+                Watchdog.Log("Quantification: " + def.DbTableName + " requires " + string.Join(", ", t.Required.Select(p => p.Key + "=" + p.Value)) + ".");
+                return t;
+            }
         }
 
         /// <summary>The GUIDs of the model items already taken off, onto any item.</summary>
