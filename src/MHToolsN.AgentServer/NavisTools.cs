@@ -434,11 +434,13 @@ namespace MHToolsN.AgentServer
         [McpServerTool(Name = "apply_takeoff"),
          Description("Fill in Quantification from the model, as preview_takeoff showed: create the item groups and items that are missing (existing ones " +
                      "with the same name are reused) and take off the elements not yet taken off. Quantification must be set up first (get_takeoff_info). " +
-                     "Same filters as preview_takeoff. A large takeoff takes a while: the call may report 'running' - poll get_execution." + ChangeHelp)]
+                     "Same filters as preview_takeoff. replace=true (Update Take Off): elements already taken off are removed from their items and taken off again " +
+                     "(new structure, duct sheet rule, model changes); items and groups left empty are removed. A large takeoff takes a while: the call may report 'running' - poll get_execution." + ChangeHelp)]
         public async Task<string> ApplyTakeoff(CancellationToken cancellationToken, string[] categories = null, string[] disciplines = null,
-            string model = "", bool dryRun = true, string sessionId = "")
+            string model = "", bool replace = false, bool dryRun = true, string sessionId = "")
         {
             var args = TakeoffArgs(categories, disciplines, model);
+            args["replace"] = replace;
             args["dryRun"] = dryRun;
             return await Call(sessionId, "apply_takeoff", args, cancellationToken);
         }

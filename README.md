@@ -443,9 +443,18 @@ dragging elements onto catalog items does, for every type at once:
 
   Galvanised steel 7850 kg/m³, allowance 0 %. Fittings and accessories: count and
   sheet thickness, no weight (Revit gives them no area).
+- **Pipework by size:** Pipes, Pipe Fittings, Pipe Accessories, Pipe Insulations and Flex
+  Pipes likewise - an item per nominal size (`Ø25`, a reducer `Ø32 - Ø25`, insulation
+  `Ø25 - 20 mm`), with the length; Width/Height = the diameter.
 - **Export Excel:** the factory workbook - Ductwork (type, size, W, H, pieces, length,
-  perimeter, sheet, sheet area, weight, totals), Fittings and accessories, Insulation,
-  All items, Sheet rule.
+  perimeter, sheet, sheet area, weight, totals), Fittings and accessories, Pipework,
+  Insulation, All items, Sheet rule.
+- **Update Take Off:** takes the ticked categories off again - their elements already
+  taken off are removed from their items (anywhere in Quantification) and taken off
+  afresh, following the current structure, duct sheet rule and model; items and groups
+  left empty are removed, nothing else is touched; one Undo. (Take Off alone adds only
+  elements not taken off yet.) AI Bridge: `apply_takeoff` with `replace=true`.
+- **Ticking several rows:** select them (Ctrl/Shift + click), tick one - all follow.
 - **Items:** otherwise one per Revit type, holding that type's elements. Navisworks maps each
   element's properties (Length, Area, Volume...) and works out the quantities; items
   use the table's own formulas (`=ModelLength`, `=ModelArea`, ..., `Count = 1`).

@@ -38,18 +38,20 @@ namespace MHToolsN.Bridge
 
             TakeoffPlan plan = Plan(doc, args);
             var report = Report(doc, plan, 0);
-            if (plan.ToAdd == 0)
+            bool replace = BridgeWire.Bool(args, "replace", false);
+            int again = replace ? plan.Lines.Sum(l => l.Already.Count) : 0;
+            if (plan.ToAdd + again == 0)
             {
-                report["nothingToDo"] = "Every element found is already taken off.";
+                report["nothingToDo"] = "Every element found is already taken off (replace=true takes them off again).";
                 return report;
             }
 
             int types = plan.Lines.Count(l => l.ToAdd.Count > 0);
-            string what = "Quantification: take off " + plan.ToAdd + " element(s) onto " + types + " item(s) (one per Revit type; ducts, duct fittings, accessories and insulation one per size under their type, " +
+            string what = "Quantification: take off " + plan.ToAdd + " element(s) onto " + types + " item(s) (one per Revit type; ducts, pipes, their fittings, accessories and insulation one per size under their type, " +
                           "with sheet thickness and weight for ducts), under item groups per discipline and category (" +
                           string.Join(", ", plan.Lines.Where(l => l.ToAdd.Count > 0).Select(l => l.Discipline + " " + l.Category).Distinct().Take(8)) +
                           (plan.Lines.Select(l => l.Discipline + l.Category).Distinct().Count() > 8 ? ", ..." : "") +
-                          "). Elements already taken off are left as they are.";
+                          "). " + (replace ? again + " element(s) already taken off are removed from their items and taken off again; items and groups left empty are removed." : "Elements already taken off are left as they are.");
             if (BridgeWire.Bool(args, "dryRun", true))
             {
                 report["dryRun"] = true;
@@ -61,7 +63,7 @@ namespace MHToolsN.Bridge
             ChangeGate.Allow(host, what);
             TakeoffResult result;
             using (var progress = new NavisProgress("MHTools-N: Quantification takeoff"))
-                result = TakeoffService.Apply(doc, plan, progress);
+                result = TakeoffService.Apply(doc, plan, progress, null, replace);
 
             return new Dictionary<string, object>
             {
@@ -69,6 +71,7 @@ namespace MHToolsN.Bridge
                 { "itemGroupsCreated", result.GroupsCreated },
                 { "itemsCreated", result.ItemsCreated },
                 { "objectsTakenOff", result.ObjectsAdded },
+                { "objectsRemovedFirst", result.ObjectsRemoved }, { "emptyItemsRemoved", result.ItemsRemoved }, { "emptyGroupsRemoved", result.GroupsRemoved },
                 { "failed", result.Failed },
                 { "errors", result.Errors },
                 { "next", "get_takeoff_summary shows the quantities. In Navisworks: Quantification workbook (Item view)." }

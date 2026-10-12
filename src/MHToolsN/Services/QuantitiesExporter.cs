@@ -51,12 +51,27 @@ namespace MHToolsN.Services
             fittings.Rows.Add(new object[] { "Total", null, null, null, fittingPieces, null });
             tables.Add(fittings);
 
+            var pipes = new ResultsExporter.Table("Pipework",
+                new[] { "Discipline", "Category", "Revit type", "Size", "Pieces", "Length (m)" },
+                new[] { 22, 18, 48, 24, 9, 12 }) { TotalRow = true };
+            int pipePieces = 0;
+            double pipeLength = 0;
+            foreach (string category in new[] { "Pipes", "Flex Pipes", "Pipe Fittings", "Pipe Accessories" })
+                foreach (var r in Rows(rows, category))
+                {
+                    pipes.Rows.Add(new object[] { Segment(r, 0), category, Segment(r, 2), Text(r, "item"), Pieces(r), Num(r, "Length") });
+                    pipePieces += Pieces(r);
+                    pipeLength += Num(r, "Length") ?? 0;
+                }
+            pipes.Rows.Add(new object[] { "Total", null, null, null, pipePieces, pipeLength });
+            tables.Add(pipes);
+
             var insulation = new ResultsExporter.Table("Insulation",
-                new[] { "Discipline", "Category", "Revit type", "Duct size - thickness", "Pieces", "Length (m)", "Area (m²)", "Volume (m³)" },
+                new[] { "Discipline", "Category", "Revit type", "Size - thickness", "Pieces", "Length (m)", "Area (m²)", "Volume (m³)" },
                 new[] { 22, 18, 36, 24, 9, 12, 12, 12 }) { TotalRow = true };
             double insLength = 0, insArea = 0, insVolume = 0;
             int insPieces = 0;
-            foreach (string category in new[] { "Duct Insulations", "Duct Linings" })
+            foreach (string category in new[] { "Duct Insulations", "Duct Linings", "Pipe Insulations" })
                 foreach (var r in Rows(rows, category))
                 {
                     insulation.Rows.Add(new object[] { Segment(r, 0), category, Segment(r, 2), Text(r, "item"), Pieces(r), Num(r, "Length"), Num(r, "Area"), Num(r, "Volume") });

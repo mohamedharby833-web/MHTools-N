@@ -47,7 +47,7 @@
                 <Button x:Name="ScanButton" DockPanel.Dock="Left" Style="{DynamicResource MhCompactButton}" Content="Scan Model"
                         Click="OnScan" ToolTip="Read the model's elements by discipline, Revit category and type." />
                 <TextBlock x:Name="ScanText" Style="{DynamicResource MhMutedText}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
-                           Text="Scan the model, untick what not to take off, then Take Off." />
+                           Text="Scan the model, untick what not to take off, then Take Off. Several rows selected (Ctrl or Shift + click): ticking one ticks them all." />
             </DockPanel>
 
             <TabControl Grid.Row="2" x:Name="Tabs">
@@ -80,7 +80,8 @@
                     </Grid>
                     <Border Style="{DynamicResource MhTableFrame}">
                         <DataGrid x:Name="CategoriesGrid" BorderThickness="0" AutoGenerateColumns="False"
-                                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Extended">
+                                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" SelectionMode="Extended"
+                                  PreviewMouseLeftButtonDown="OnGridPreviewMouseDown">
                             <DataGrid.Columns>
                                 <DataGridTemplateColumn Width="44" CanUserResize="False" SortMemberPath="Include">
                                     <DataGridTemplateColumn.Header>
@@ -143,6 +144,8 @@
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="ExportButton" Content="Export Excel" Click="OnExport" Margin="0,0,8,0"
                             ToolTip="Save the quantities as an Excel workbook for the factory: ductwork by type and size with sheet thickness and weight, fittings, insulation, every item." />
+                    <Button x:Name="UpdateButton" Content="Update Take Off" Click="OnUpdate" Margin="0,0,8,0"
+                            ToolTip="Take the ticked categories off again: their elements already taken off are removed from their items and taken off afresh - new sizes, the duct sheet rule, model changes. Items and groups left empty are removed. One Undo (Ctrl+Z) reverts it." />
                     <Button x:Name="TakeOffButton" Style="{DynamicResource MhPrimaryButton}" Content="Take Off" Click="OnTakeOff" Margin="0,0,8,0"
                             ToolTip="Create the missing item groups and items and take off the ticked elements. One Undo (Ctrl+Z) reverts it." />
                     <Button Content="Close" Click="OnClose" IsCancel="True" />

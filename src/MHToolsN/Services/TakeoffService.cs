@@ -22,6 +22,7 @@ namespace MHToolsN.Services
 
         public string ItemName { get { return Size ?? Type; } }
         public int AlreadyTakenOff;
+        public List<ModelItem> Already = new List<ModelItem>(); // the elements already taken off (for Update Take Off)
         public int NoGuid;
     }
 
@@ -38,6 +39,7 @@ namespace MHToolsN.Services
         public int GroupsCreated;
         public int ItemsCreated;
         public int ObjectsAdded;
+        public int ObjectsRemoved, ItemsRemoved, GroupsRemoved; // Update Take Off
         public int Failed;
         public List<string> Errors = new List<string>();
     }
@@ -71,12 +73,15 @@ namespace MHToolsN.Services
 
         /// <summary>
         /// Categories itemized by size (for the factory): Revit type > one item per size.
-        /// Value: the Revit property holding the size.
+        /// Value: the Revit properties holding the size, the first one found is read.
+        /// Pipes: Revit's Size is the nominal diameter ("100 mmø").
         /// </summary>
-        private static readonly Dictionary<string, string> SizedCategories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string[]> SizedCategories = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            { "Ducts", "Size" }, { "Flex Ducts", "Size" }, { "Duct Fittings", "Size" }, { "Duct Accessories", "Size" },
-            { "Duct Insulations", "Duct Size" }, { "Duct Linings", "Duct Size" }
+            { "Ducts", new[] { "Size" } }, { "Flex Ducts", new[] { "Size", "Overall Size" } }, { "Duct Fittings", new[] { "Size" } }, { "Duct Accessories", new[] { "Size" } },
+            { "Duct Insulations", new[] { "Duct Size", "Size" } }, { "Duct Linings", new[] { "Duct Size", "Size" } },
+            { "Pipes", new[] { "Size" } }, { "Flex Pipes", new[] { "Size", "Overall Size" } }, { "Pipe Fittings", new[] { "Size" } }, { "Pipe Accessories", new[] { "Size" } },
+            { "Pipe Insulations", new[] { "Pipe Size", "Size" } }
         };
 
         public const string NoSize = "(no size)";
@@ -149,10 +154,10 @@ namespace MHToolsN.Services
                     string sizeLabel = null;
                     DuctSize size = null;
                     double insulationMm = 0;
-                    string sizeProperty;
-                    if (SizedCategories.TryGetValue(category, out sizeProperty))
+                    string[] sizeProperties;
+                    if (SizedCategories.TryGetValue(category, out sizeProperties))
                     {
-                        size = DuctSize.Parse(Text(item, null, null, "Element", sizeProperty));
+                        size = DuctSize.Parse(sizeProperties.Select(p => Text(item, null, null, "Element", p)).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t)));
                         sizeLabel = size != null ? size.Label : NoSize;
                         if (category.EndsWith("Insulations", StringComparison.OrdinalIgnoreCase) || category.EndsWith("Linings", StringComparison.OrdinalIgnoreCase))
                         {
@@ -175,7 +180,7 @@ namespace MHToolsN.Services
                     }
                     Guid guid = item.InstanceGuid;
                     if (guid == Guid.Empty) line.NoGuid++;
-                    else if (done.Contains(guid)) line.AlreadyTakenOff++;
+                    else if (done.Contains(guid)) { line.AlreadyTakenOff++; line.Already.Add(item); }
                     else line.ToAdd.Add(item);
                 }
             }
@@ -192,7 +197,14 @@ namespace MHToolsN.Services
 
         // --------------------------------------------------------------- apply
 
-        public static TakeoffResult Apply(Document doc, TakeoffPlan plan, NavisProgress progress, DuctSheet sheet = null)
+        /// <param name="replace">
+        /// Take off again (Update Take Off): the plan's elements already taken off are
+        /// first removed from their items - anywhere in Quantification - and taken off
+        /// afresh with the rest, so they follow the current structure (sizes), duct sheet
+        /// rule and model. Items and groups left empty by that are removed; nothing else
+        /// is touched.
+        /// </param>
+        public static TakeoffResult Apply(Document doc, TakeoffPlan plan, NavisProgress progress, DuctSheet sheet = null, bool replace = false)
         {
             string why;
             if (!IsReady(doc, out why)) throw new InvalidOperationException(why);
@@ -201,7 +213,7 @@ namespace MHToolsN.Services
 
             DocumentTakeoff takeoff = Takeoff(doc);
             var result = new TakeoffResult();
-            int total = Math.Max(1, plan.ToAdd), done = 0;
+            int total = Math.Max(1, plan.ToAdd + (replace ? plan.Lines.Sum(l => l.Already.Count) : 0)), done = 0;
 
             // Found live (Navisworks 2027, through Trusted C#):
             // - InsertModelItemTakeoff(item, element) alone leaves every quantity empty;
@@ -216,18 +228,23 @@ namespace MHToolsN.Services
             {
                 using (NavisworksTransaction tx = takeoff.Database.BeginTransaction(DatabaseChangedAction.Edited))
                 {
+                    if (replace)
+                        RemoveTakeoffs(tx.Connection, takeoff, new HashSet<Guid>(plan.Lines.SelectMany(l => l.Already).Select(e => e.InstanceGuid)), result);
                     var writer = new TableWriter(tx.Connection, takeoff);
-                    foreach (TakeoffLine line in plan.Lines.Where(l => l.ToAdd.Count > 0))
+                    var seen = new HashSet<Guid>();
+                    foreach (TakeoffLine line in plan.Lines.Where(l => l.ToAdd.Count > 0 || (replace && l.Already.Count > 0)))
                     {
+                        IEnumerable<ModelItem> elements = replace ? line.ToAdd.Concat(line.Already) : line.ToAdd;
                         long top = writer.Group(null, line.DisciplineName, ref result.GroupsCreated);
                         long cat = writer.Group(top, line.Category, ref result.GroupsCreated);
                         long item = line.Size == null
                             ? writer.Item(cat, line.Type, line.Category, ref result.ItemsCreated)
                             : writer.Item(writer.Group(cat, line.Type, ref result.GroupsCreated), line.Size, line.Category, ref result.ItemsCreated);
 
-                        foreach (ModelItem element in line.ToAdd)
+                        foreach (ModelItem element in elements)
                         {
                             if (progress != null) progress.Report(done++ / (double)total);
+                            if (!seen.Add(element.InstanceGuid)) continue;
                             try
                             {
                                 TakeoffVariableCollection inputs = takeoff.Objects.CreateDefaultInputVariables();
@@ -253,6 +270,111 @@ namespace MHToolsN.Services
             Watchdog.Log("Quantification: groups +" + result.GroupsCreated + ", items +" + result.ItemsCreated + ", objects +" + result.ObjectsAdded +
                          (result.Failed > 0 ? ", failed " + result.Failed + " (" + string.Join("; ", result.Errors) + ")" : ""));
             return result;
+        }
+
+        // ------------------------------------------------------ update takeoff
+
+        /// <summary>
+        /// Removes the takeoff objects of these elements (with any steps and resources
+        /// on them), then the items they leave empty and, upwards, the groups left with
+        /// nothing in them. Inside the caller's database transaction (and its Navisworks
+        /// transaction, so one Undo puts it all back). There is no delete in the API:
+        /// SQL on the tables, names read from the API as everywhere here.
+        /// </summary>
+        private static void RemoveTakeoffs(NavisworksConnection c, DocumentTakeoff takeoff, HashSet<Guid> guids, TakeoffResult result)
+        {
+            if (guids.Count == 0) return;
+            ObjectTable objects = takeoff.Objects;
+            var ids = new List<long>();
+            var items = new HashSet<long>();
+            using (NavisworksCommand cmd = c.CreateCommand())
+            {
+                cmd.CommandText = "SELECT " + objects.RowId.Name + ", " + objects.Parent.Name + ", " + objects.ModelItemId.Name + " FROM " + objects.DbTableName;
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        Guid g;
+                        if (r.IsDBNull(2) || !TryGuid(r.GetValue(2), out g) || !guids.Contains(g)) continue;
+                        ids.Add(Convert.ToInt64(r.GetValue(0)));
+                        if (!r.IsDBNull(1)) items.Add(Convert.ToInt64(r.GetValue(1)));
+                    }
+                }
+            }
+
+            for (int i = 0; i < ids.Count; i += 400)
+            {
+                string list = string.Join(",", ids.Skip(i).Take(400));
+                // Steps and resources hang off objects; usually there are none on ours.
+                try
+                {
+                    ObjectStepTable steps = takeoff.ObjectSteps;
+                    ObjectResourceTable resources = takeoff.ObjectResources;
+                    Execute(c, "DELETE FROM " + resources.DbTableName + " WHERE " + resources.ObjectStepId.Name + " IN (SELECT " + steps.RowId.Name +
+                               " FROM " + steps.DbTableName + " WHERE " + steps.ObjectId.Name + " IN (" + list + "))");
+                    Execute(c, "DELETE FROM " + steps.DbTableName + " WHERE " + steps.ObjectId.Name + " IN (" + list + ")");
+                }
+                catch (Exception ex) { Watchdog.Log("Quantification: clearing object steps failed: " + ex.Message); }
+                result.ObjectsRemoved += Execute(c, "DELETE FROM " + objects.DbTableName + " WHERE " + objects.RowId.Name + " IN (" + list + ")");
+            }
+
+            // Items left empty, then their groups upwards while empty.
+            var groups = new HashSet<long>();
+            foreach (long item in items)
+            {
+                if (Scalar(c, "SELECT COUNT(*) FROM " + objects.DbTableName + " WHERE " + objects.Parent.Name + " = " + item) > 0) continue;
+                long parent = Scalar(c, "SELECT " + takeoff.Items.Parent.Name + " FROM " + takeoff.Items.DbTableName + " WHERE " + takeoff.Items.RowId.Name + " = " + item);
+                try
+                {
+                    result.ItemsRemoved += Execute(c, "DELETE FROM " + takeoff.Items.DbTableName + " WHERE " + takeoff.Items.RowId.Name + " = " + item);
+                    if (parent > 0) groups.Add(parent);
+                }
+                catch (Exception ex) { Watchdog.Log("Quantification: kept empty item " + item + ": " + ex.Message); }
+            }
+            while (groups.Count > 0)
+            {
+                var next = new HashSet<long>();
+                foreach (long group in groups)
+                {
+                    if (Scalar(c, "SELECT COUNT(*) FROM " + takeoff.Items.DbTableName + " WHERE " + takeoff.Items.Parent.Name + " = " + group) > 0) continue;
+                    if (Scalar(c, "SELECT COUNT(*) FROM " + takeoff.ItemGroups.DbTableName + " WHERE " + takeoff.ItemGroups.Parent.Name + " = " + group) > 0) continue;
+                    long parent = Scalar(c, "SELECT " + takeoff.ItemGroups.Parent.Name + " FROM " + takeoff.ItemGroups.DbTableName + " WHERE " + takeoff.ItemGroups.RowId.Name + " = " + group);
+                    try
+                    {
+                        result.GroupsRemoved += Execute(c, "DELETE FROM " + takeoff.ItemGroups.DbTableName + " WHERE " + takeoff.ItemGroups.RowId.Name + " = " + group);
+                        if (parent > 0) next.Add(parent);
+                    }
+                    catch (Exception ex) { Watchdog.Log("Quantification: kept empty group " + group + ": " + ex.Message); }
+                }
+                groups = next;
+            }
+        }
+
+        private static int Execute(NavisworksConnection c, string sql)
+        {
+            using (NavisworksCommand cmd = c.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static long Scalar(NavisworksConnection c, string sql)
+        {
+            using (NavisworksCommand cmd = c.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                object v = cmd.ExecuteScalar();
+                return v == null || v == DBNull.Value ? 0 : Convert.ToInt64(v);
+            }
+        }
+
+        /// <summary>TK_Object.ModelItemID as stored: a Guid, its 16 bytes or its text.</summary>
+        private static bool TryGuid(object v, out Guid g)
+        {
+            if (v is Guid) { g = (Guid)v; return true; }
+            if (v is byte[] && ((byte[])v).Length == 16) { g = new Guid((byte[])v); return true; }
+            return Guid.TryParse(Convert.ToString(v), out g);
         }
 
         // ------------------------------------------------------- sized items
@@ -640,11 +762,8 @@ namespace MHToolsN.Services
                         while (reader.Read())
                         {
                             if (reader.IsDBNull(0)) continue;
-                            object v = reader.GetValue(0);
                             Guid g;
-                            if (v is Guid) guids.Add((Guid)v);
-                            else if (v is byte[] && ((byte[])v).Length == 16) guids.Add(new Guid((byte[])v));
-                            else if (Guid.TryParse(Convert.ToString(v), out g)) guids.Add(g);
+                            if (TryGuid(reader.GetValue(0), out g)) guids.Add(g);
                         }
                     }
                 }

@@ -136,8 +136,44 @@ namespace MHToolsN.UI
             UpdateButtons();
         }
 
+        // A row's tick box. With several rows selected, and this one among them, all of
+        // them follow it (as in the Clash Matrix window).
+
+        /// <summary>The rows selected when a tick box was pressed - before the click can change the selection.</summary>
+        private List<CategoryRow> _selectionAtClick;
+        private CategoryRow _rowAtClick;
+        private bool _rowWasTicked;
+
+        private void OnGridPreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            _selectionAtClick = CategoriesGrid.SelectedItems.OfType<CategoryRow>().ToList();
+            _rowAtClick = null;
+            System.Windows.Controls.CheckBox box = null;
+            for (var d = e.OriginalSource as DependencyObject; d != null && !(d is System.Windows.Controls.DataGridRow); d = System.Windows.Media.VisualTreeHelper.GetParent(d))
+                if (d is System.Windows.Controls.CheckBox) box = (System.Windows.Controls.CheckBox)d;
+            if (box != null && box.DataContext is CategoryRow)
+            {
+                _rowAtClick = (CategoryRow)box.DataContext;
+                _rowWasTicked = box.IsChecked == true;
+            }
+        }
+
         private void OnRowTicked(object sender, RoutedEventArgs e)
         {
+            var box = (System.Windows.Controls.CheckBox)sender;
+            List<CategoryRow> chosen = _selectionAtClick;
+            CategoryRow row = _rowAtClick ?? box.DataContext as CategoryRow;
+            bool value = _rowAtClick != null ? !_rowWasTicked : box.IsChecked == true;
+            _selectionAtClick = null;
+            _rowAtClick = null;
+            if (chosen != null && chosen.Count > 1 && row != null && chosen.Contains(row))
+            {
+                foreach (CategoryRow r in chosen) r.Include = value;
+                // Keep them selected, to tick again.
+                CategoriesGrid.SelectedItems.Clear();
+                foreach (CategoryRow r in chosen)
+                    if (CategoriesGrid.Items.Contains(r)) CategoriesGrid.SelectedItems.Add(r);
+            }
             UpdateButtons();
         }
 
@@ -145,26 +181,42 @@ namespace MHToolsN.UI
 
         private void OnTakeOff(object sender, RoutedEventArgs e)
         {
+            RunTakeoff(false);
+        }
+
+        private void OnUpdate(object sender, RoutedEventArgs e)
+        {
+            RunTakeoff(true);
+        }
+
+        /// <param name="replace">Update Take Off: elements already taken off are taken off again (TakeoffService.Apply).</param>
+        private void RunTakeoff(bool replace)
+        {
             if (_plan == null || !CheckReady()) return;
             var chosen = new TakeoffPlan();
             foreach (CategoryRow row in _rows.Where(r => r.Include)) chosen.Lines.AddRange(row.Lines);
-            int add = chosen.ToAdd;
-            if (add == 0)
+            int add = chosen.ToAdd, again = replace ? chosen.Lines.Sum(l => l.Already.Count) : 0;
+            if (add + again == 0)
             {
-                MessageBox.Show(this, "Nothing to take off: the ticked categories are already taken off.", Caption, MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, replace ? "Nothing ticked to take off." : "Nothing to take off: the ticked categories are already taken off. Update Take Off takes them off again.",
+                    Caption, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             DuctSheet sheet;
             if (!ReadSheet(out sheet)) return;
-            int types = chosen.Lines.Count(l => l.ToAdd.Count > 0);
-            int sized = chosen.Lines.Count(l => l.ToAdd.Count > 0 && l.Size != null);
-            if (MessageBox.Show(this,
-                    "Take off " + add + " element(s) onto " + types + " item(s), under item groups per discipline and category?\n\n" +
-                    "An item per Revit type" + (sized > 0 ? "; ducts, duct fittings, accessories and insulation an item per size under their type (" + sized + " sizes), " +
-                    "ducts with sheet thickness and weight by " + sheet.Standard + " (" + sheet.StepsText + "), " + DuctSheet.Num(sheet.Density) + " kg/m³, +" +
-                    DuctSheet.Num(sheet.AllowancePercent) + " %" : "") + ".\n\n" +
-                    "Existing groups and items of the same name are reused; elements already taken off are left as they are. One Undo (Ctrl+Z) reverts it.",
-                    Caption, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK)
+            var lines = chosen.Lines.Where(l => l.ToAdd.Count > 0 || (replace && l.Already.Count > 0)).ToList();
+            int sized = lines.Count(l => l.Size != null);
+            string what = (replace
+                    ? "Update the takeoff of " + (add + again) + " element(s) on " + lines.Count + " item(s)?\n\n" +
+                      again + " element(s) already taken off are removed from their items and taken off again" + (add > 0 ? ", " + add + " new one(s) added" : "") +
+                      "; items and groups left empty are removed."
+                    : "Take off " + add + " element(s) onto " + lines.Count + " item(s), under item groups per discipline and category?") + "\n\n" +
+                "An item per Revit type" + (sized > 0 ? "; ducts, pipes, their fittings, accessories and insulation an item per size under their type (" + sized + " sizes), " +
+                "ducts with sheet thickness and weight by " + sheet.Standard + " (" + sheet.StepsText + "), " + DuctSheet.Num(sheet.Density) + " kg/m³, +" +
+                DuctSheet.Num(sheet.AllowancePercent) + " %" : "") + ".\n\n" +
+                (replace ? "" : "Existing groups and items of the same name are reused; elements already taken off are left as they are. ") +
+                "One Undo (Ctrl+Z) reverts it.";
+            if (MessageBox.Show(this, what, Caption, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK)
                 return;
 
             try
@@ -172,17 +224,18 @@ namespace MHToolsN.UI
                 Cursor = System.Windows.Input.Cursors.Wait;
                 TakeoffResult result;
                 using (var progress = new NavisProgress("Quantification takeoff"))
-                    result = TakeoffService.Apply(_document, chosen, progress, sheet);
+                    result = TakeoffService.Apply(_document, chosen, progress, sheet, replace);
                 Cursor = null;
 
                 MessageBox.Show(this,
+                    (replace ? "Removed first: " + result.ObjectsRemoved + " element(s), " + result.ItemsRemoved + " empty item(s), " + result.GroupsRemoved + " empty group(s)\n\n" : "") +
                     "Item groups created: " + result.GroupsCreated + "\nItems created: " + result.ItemsCreated + "\nElements taken off: " + result.ObjectsAdded +
                     (result.Failed > 0 ? "\nFailed: " + result.Failed : "") +
                     (result.Errors.Count > 0 ? "\n\n" + string.Join("\n", result.Errors) : "") +
                     "\n\nOne Undo (Ctrl+Z) reverts this. Open Quantification to see the items.",
                     Caption, MessageBoxButton.OK, result.Errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
 
-                OnScan(sender, e);
+                OnScan(this, null);
                 RefreshQuantities();
                 Tabs.SelectedIndex = 1;
             }
@@ -328,12 +381,13 @@ namespace MHToolsN.UI
         {
             bool ready = _document != null && !_document.IsClear && _document.GetTakeoffReady();
             TakeOffButton.IsEnabled = ready && _plan != null && _rows.Any(r => r.Include && r.ToAdd > 0);
+            UpdateButton.IsEnabled = ready && _plan != null && _rows.Any(r => r.Include && r.Elements > 0);
             ExportButton.IsEnabled = ready;
             var ticked = _rows.Where(r => r.Include).ToList();
             int add = ticked.Sum(r => r.ToAdd), already = ticked.Sum(r => r.Already);
             if (_plan == null) Footer.Status = "Scan the model first.";
             else if (ticked.Count == 0) Footer.Status = "Nothing ticked.";
-            else if (add == 0) Footer.Status = "All " + already.ToString("#,0") + " ticked element(s) are already taken off - nothing to add.";
+            else if (add == 0) Footer.Status = "All " + already.ToString("#,0") + " ticked element(s) are already taken off - Update Take Off takes them off again (new sizes, sheet rule, model changes).";
             else Footer.Status = add.ToString("#,0") + " element(s) to take off" + (already > 0 ? " (" + already.ToString("#,0") + " already)." : ".");
 
             AllBox.IsChecked = _rows.Count > 0 && _rows.All(r => r.Include) ? true : _rows.Any(r => r.Include) ? (bool?)null : false;
