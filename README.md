@@ -335,7 +335,7 @@ AI app ──MCP (stdio)──► MHTools-N.AgentServer.exe ──named pipe─�
   nothing was done. If it started but has not finished, the AI gets an operation id
   to poll with `get_execution`. (Idea from NavisCoord, HorizunGroup, MIT.)
 
-Tools so far (all read only; with one Navisworks running, `sessionId` can be left empty):
+Tools (with one Navisworks running, `sessionId` can be left empty):
 
 | Group | Tools |
 |---|---|
@@ -344,6 +344,15 @@ Tools so far (all read only; with one Navisworks running, `sessionId` can be lef
 | Sets and views | `list_sets` (search / selection, Clash Matrix or not, optional counts), `get_set_items`, `list_viewpoints` |
 | Clash | `get_clash_summary` (start here: tests and clashes by status, top tests by open clashes), `list_clash_tests` (paged, filters), `get_clash_results` (paged, both items described), `get_clash_image` |
 | Pictures | `capture_view` (the view as the user sees it), `get_clash_image` (zoomed onto the clash, item 1 red, item 2 green, the rest faded) |
+| View changes | `select_items`, `zoom_to_items`, `set_visibility` (isolate / hide / show / show all), `color_items` and `reset_appearance` (temporary, not saved), `go_to_viewpoint` |
+| Model changes | `create_set` (search or selection set, folder *AI Sets*), `save_viewpoint` (folder *AI Viewpoints*), `set_clash_status` (status, assignee, comment, description), `run_clash_tests`, `preview_clash_matrix` / `apply_clash_matrix` (the Clash Matrix window's Scan + Create) |
+
+The view tools act on item ids, a saved set, the user's selection, or a clash's two
+items. **Model changes preview by default** (`dryRun=true`, nothing changes) and need
+**Trusted C#** on to run: in *Ask* mode Navisworks tells the user what the AI wants to
+do and does it only on **Yes** (No is the default button); in *Auto* it is logged. Each
+change is one Ctrl+Z step; nothing saves the file; the `Clash Matrix` set folder can
+only be changed through `apply_clash_matrix`.
 
 Items get short ids (`n12`) the agent passes back to other tools; they last until
 models are opened, appended or reloaded. Distances are in mm, points in meters.

@@ -84,7 +84,7 @@ namespace MHToolsN.Commands
             Host.Mode = window.Choice;
             MessageBox.Show(
                 (window.Choice == CodeMode.Ask
-                    ? "Trusted C# is ON - Ask.\n\nEach change an AI app makes waits for you to keep or undo it."
+                    ? "Trusted C# is ON - Ask.\n\nBefore each change Navisworks tells you what the AI app wants to do, and does it only if you say Yes."
                     : "Trusted C# is ON - Auto.\n\nChanges an AI app makes are kept without asking. Use it on a copy of the model.") +
                 "\n\nThe button reads \"Trusted C# On\" while it is on. Click it again to switch it off; " +
                 "it also switches off when the Agent Bridge stops or Navisworks closes.",

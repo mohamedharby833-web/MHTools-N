@@ -41,7 +41,7 @@
 
             <TextBlock Style="{DynamicResource MhStrongText}" Text="AI Bridge" Margin="0,0,0,1" />
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,10"
-                       Text="Connects an AI app (Claude, Cursor, Codex...) to this Navisworks through MCP. Agent Bridge starts or stops it; Connect AI App sets the app up in one click; Trusted C# (off by default) lets the app run code it writes. The app can read the model, its sets, viewpoints and clash results, and see pictures of the view and of each clash. Nothing is saved by the bridge." />
+                       Text="Connects an AI app (Claude, Cursor, Codex...) to this Navisworks through MCP. Agent Bridge starts or stops it; Connect AI App sets the app up in one click. The app can read the model, its sets, viewpoints and clash results, see pictures of the view and of each clash, and change the view. Trusted C# (off by default) also lets it change the model - sets, viewpoints, clash statuses, running tests, the Clash Matrix - each change previewed first and one undo step. Nothing is saved by the bridge." />
 
             <Border Style="{DynamicResource MhNotePanel}" Margin="0,4,0,0">
                 <StackPanel>

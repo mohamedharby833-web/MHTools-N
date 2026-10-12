@@ -198,11 +198,8 @@ namespace MHToolsN.Bridge
             int height = BridgeWire.Int(args, "height", 600, 150, 1200);
             double mmPerUnit = UnitConverter.MillimetresPerUnit(doc.Units);
 
-            ClashResult found = null;
-            ClashResultGroup inGroup = null;
-            foreach (ClashResult r in ClashResultsReader.Results(test))
-                if (string.Equals(r.DisplayName, name, StringComparison.OrdinalIgnoreCase)) { found = r; inGroup = r.Parent as ClashResultGroup; break; }
-            if (found == null) throw new BridgeException("NOT_FOUND", "Test '" + test.DisplayName + "' has no clash '" + name + "'. Names come from get_clash_results.");
+            ClashResult found = FindResult(test, name);
+            ClashResultGroup inGroup = found.Parent as ClashResultGroup;
 
             byte[] jpeg;
             int w, h;
@@ -226,6 +223,14 @@ namespace MHToolsN.Bridge
         }
 
         // -------------------------------------------------------------- helpers
+
+        internal static ClashResult FindResult(ClashTest test, string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) throw new BridgeException("INVALID_ARGUMENT", "Give the clash's name (e.g. Clash12, from get_clash_results).");
+            foreach (ClashResult r in ClashResultsReader.Results(test))
+                if (string.Equals(r.DisplayName, name.Trim(), StringComparison.OrdinalIgnoreCase)) return r;
+            throw new BridgeException("NOT_FOUND", "Test '" + test.DisplayName + "' has no clash '" + name + "'. Names come from get_clash_results.");
+        }
 
         internal static ClashTest FindTest(Document doc, string name)
         {

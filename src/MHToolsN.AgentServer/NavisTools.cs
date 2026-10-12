@@ -203,6 +203,188 @@ namespace MHToolsN.AgentServer
             }, cancellationToken));
         }
 
+        // ========================================================= view changes
+
+        private const string TargetsHelp =
+            "What to act on - exactly one of: itemIds (ids from the read tools), set (a saved set's path or name), " +
+            "useSelection=true (what the user has selected), or clashTest + clash (that clash's two items).";
+
+        private static JsonObject Targets(string[] itemIds, string set, bool useSelection, string clashTest, string clash)
+        {
+            return new JsonObject
+            {
+                ["itemIds"] = new JsonArray((itemIds ?? new string[0]).Select(i => (JsonNode)i).ToArray()),
+                ["set"] = set ?? "",
+                ["useSelection"] = useSelection,
+                ["clashTest"] = clashTest ?? "",
+                ["clash"] = clash ?? ""
+            };
+        }
+
+        [McpServerTool(Name = "select_items", Idempotent = true),
+         Description("Select items in Navisworks, so the user sees them highlighted (and Navisworks' own tools act on them). " + TargetsHelp +
+                     " add=true adds to the current selection instead of replacing it. Changes the view only.")]
+        public async Task<string> SelectItems(CancellationToken cancellationToken, string[] itemIds = null, string set = "", bool useSelection = false,
+            string clashTest = "", string clash = "", bool add = false, string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["add"] = add;
+            return await Call(sessionId, "select_items", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "zoom_to_items", Idempotent = true),
+         Description("Zoom the Navisworks view onto items, keeping the view's direction, and select them (select=false not to). " + TargetsHelp +
+                     " Follow with capture_view to look. Changes the view only.")]
+        public async Task<string> ZoomToItems(CancellationToken cancellationToken, string[] itemIds = null, string set = "", bool useSelection = false,
+            string clashTest = "", string clash = "", bool select = true, string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["select"] = select;
+            return await Call(sessionId, "zoom_to_items", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "set_visibility"),
+         Description("Hide and show model items. action: isolate (hide everything else), hide, show, or show_all (unhide everything; needs no targets). " +
+                     TargetsHelp + " Changes what the view shows; the coordination data (sets, tests, results) is not touched.")]
+        public async Task<string> SetVisibility(string action, CancellationToken cancellationToken, string[] itemIds = null, string set = "",
+            bool useSelection = false, string clashTest = "", string clash = "", string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["action"] = action;
+            return await Call(sessionId, "set_visibility", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "color_items"),
+         Description("Colour items and/or make them see-through in the view - temporary, not saved with the file. color: #RRGGBB or a name " +
+                     "(red, green, blue, yellow, orange, purple, cyan, magenta, white, black, grey, teal). transparency: 0 (solid) to 100. " +
+                     TargetsHelp + " reset_appearance takes it off.")]
+        public async Task<string> ColorItems(CancellationToken cancellationToken, string color = "", int transparency = -1, string[] itemIds = null,
+            string set = "", bool useSelection = false, string clashTest = "", string clash = "", string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["color"] = color;
+            args["transparency"] = transparency;
+            return await Call(sessionId, "color_items", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "reset_appearance"),
+         Description("Take temporary colours and transparency off: all=true for the whole model, or the given targets. " + TargetsHelp)]
+        public async Task<string> ResetAppearance(CancellationToken cancellationToken, bool all = false, string[] itemIds = null, string set = "",
+            bool useSelection = false, string clashTest = "", string clash = "", string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["all"] = all;
+            return await Call(sessionId, "reset_appearance", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "go_to_viewpoint", Idempotent = true),
+         Description("Show a saved viewpoint in Navisworks (its camera, and its hidden items and colours if it saved them). viewpoint: path from list_viewpoints, or the name.")]
+        public async Task<string> GoToViewpoint(string viewpoint, CancellationToken cancellationToken, string sessionId = "")
+        {
+            return await Call(sessionId, "go_to_viewpoint", new JsonObject { ["viewpoint"] = viewpoint }, cancellationToken);
+        }
+
+        // ======================================================== model changes
+
+        private const string ChangeHelp =
+            " dryRun=true (the default) only previews: nothing changes - show the user what would happen. dryRun=false makes the change, " +
+            "which needs Trusted C# switched on in Navisworks; in Ask mode Navisworks asks the user first (the call then reports 'running': " +
+            "poll get_execution, and on REJECTED_BY_USER do not try again without asking). Each change is one Ctrl+Z step; the file is never saved.";
+
+        [McpServerTool(Name = "create_set"),
+         Description("Save a set in the Sets window. Search set (keeps finding new items as models are updated): give category and/or conditions " +
+                     "and model, exactly as for find_items. Selection set (fixed items): give targets instead. " + TargetsHelp +
+                     " folder: default 'AI Sets' (Folder/Sub allowed; never the 'Clash Matrix' folder, which the Clash Matrix tool owns). " +
+                     "replace=true overwrites a set of the same name." + ChangeHelp)]
+        public async Task<string> CreateSet(string name, CancellationToken cancellationToken, string folder = "AI Sets",
+            string category = "", string conditions = "", string model = "",
+            string[] itemIds = null, string set = "", bool useSelection = false, string clashTest = "", string clash = "",
+            bool replace = false, bool dryRun = true, string sessionId = "")
+        {
+            var args = Targets(itemIds, set, useSelection, clashTest, clash);
+            args["name"] = name;
+            args["folder"] = folder;
+            args["replace"] = replace;
+            args["dryRun"] = dryRun;
+            if (!string.IsNullOrWhiteSpace(category)) args["category"] = category;
+            if (!string.IsNullOrWhiteSpace(model)) args["model"] = model;
+            if (!string.IsNullOrWhiteSpace(conditions))
+            {
+                JsonNode parsed;
+                try { parsed = JsonNode.Parse(conditions); }
+                catch (Exception ex) { throw new McpException("conditions is not valid JSON: " + ex.Message); }
+                args["conditions"] = parsed is JsonArray ? parsed : new JsonArray(parsed);
+            }
+            return await Call(sessionId, "create_set", args, cancellationToken);
+        }
+
+        [McpServerTool(Name = "save_viewpoint"),
+         Description("Save the current Navisworks view as a viewpoint, in folder (default 'AI Viewpoints'). Set the view up first " +
+                     "(zoom_to_items, set_visibility, color_items)." + ChangeHelp)]
+        public async Task<string> SaveViewpoint(string name, CancellationToken cancellationToken, string folder = "AI Viewpoints",
+            bool dryRun = true, string sessionId = "")
+        {
+            return await Call(sessionId, "save_viewpoint", new JsonObject { ["name"] = name, ["folder"] = folder, ["dryRun"] = dryRun }, cancellationToken);
+        }
+
+        [McpServerTool(Name = "set_clash_status"),
+         Description("Change clash results in one test: status (New, Active, Reviewed, Approved, Resolved), assignTo (a person), " +
+                     "comment (added, marked 'AI:'), description. Which clashes: clashes (names from get_clash_results), or whereStatus " +
+                     "to take every clash with that status (e.g. whereStatus=New). At most 2000 per call. Judge clashes before approving them - " +
+                     "get_clash_image shows each one." + ChangeHelp)]
+        public async Task<string> SetClashStatus(string test, CancellationToken cancellationToken, string[] clashes = null, string whereStatus = "",
+            string status = "", string assignTo = "", string comment = "", string description = "", bool dryRun = true, string sessionId = "")
+        {
+            return await Call(sessionId, "set_clash_status", new JsonObject
+            {
+                ["test"] = test,
+                ["clashes"] = new JsonArray((clashes ?? new string[0]).Select(c => (JsonNode)c).ToArray()),
+                ["whereStatus"] = whereStatus, ["status"] = status, ["assignTo"] = assignTo,
+                ["comment"] = comment, ["description"] = description, ["dryRun"] = dryRun
+            }, cancellationToken);
+        }
+
+        [McpServerTool(Name = "run_clash_tests"),
+         Description("Run clash tests in Clash Detective: tests (names from list_clash_tests) or all=true. Updates their results - new clashes appear, " +
+                     "fixed ones become Resolved. A large run takes minutes and holds Navisworks: the call then reports 'running' - poll get_execution." + ChangeHelp)]
+        public async Task<string> RunClashTests(CancellationToken cancellationToken, string[] tests = null, bool all = false,
+            bool dryRun = true, string sessionId = "")
+        {
+            return await Call(sessionId, "run_clash_tests", new JsonObject
+            {
+                ["tests"] = new JsonArray((tests ?? new string[0]).Select(t => (JsonNode)t).ToArray()),
+                ["all"] = all, ["dryRun"] = dryRun
+            }, cancellationToken);
+        }
+
+        [McpServerTool(Name = "preview_clash_matrix", ReadOnly = true, Idempotent = true),
+         Description("What the MHTools-N Clash Matrix tool would build from the open model, without changing anything: the appended files and their " +
+                     "disciplines (AR, ST, MEC, EL, ICT...), the search sets (one per discipline and Revit category), the clash tests " +
+                     "('No - DISC CATEGORY - DISC CATEGORY', priority and tolerance from the built-in clash standard), and the plan against the model " +
+                     "(tests to add, update, rename, unchanged). bestPractice=true keeps each discipline to its own categories; false gives every " +
+                     "category in every file a set. toleranceMm: the default tolerance. limit: how many sets and tests to list.")]
+        public async Task<string> PreviewClashMatrix(CancellationToken cancellationToken, bool bestPractice = true, int toleranceMm = 10,
+            int limit = 60, string sessionId = "")
+        {
+            return await Call(sessionId, "preview_clash_matrix", new JsonObject
+            {
+                ["bestPractice"] = bestPractice, ["toleranceMm"] = toleranceMm, ["limit"] = limit
+            }, cancellationToken);
+        }
+
+        [McpServerTool(Name = "apply_clash_matrix"),
+         Description("Do what preview_clash_matrix showed - the Clash Matrix window's Create Clash Tests: create or update the search sets in the " +
+                     "'Clash Matrix' folder and add, update or rename the Clash Matrix tests (results are kept). removeStale=true also removes " +
+                     "Clash Matrix tests the matrix no longer has. Tests that are not the Clash Matrix's are never touched. Then run_clash_tests." + ChangeHelp)]
+        public async Task<string> ApplyClashMatrix(CancellationToken cancellationToken, bool bestPractice = true, int toleranceMm = 10,
+            bool removeStale = false, bool dryRun = true, string sessionId = "")
+        {
+            return await Call(sessionId, "apply_clash_matrix", new JsonObject
+            {
+                ["bestPractice"] = bestPractice, ["toleranceMm"] = toleranceMm, ["removeStale"] = removeStale, ["dryRun"] = dryRun
+            }, cancellationToken);
+        }
+
         // ================================================================= view
 
         [McpServerTool(Name = "capture_view", ReadOnly = true, Idempotent = true),

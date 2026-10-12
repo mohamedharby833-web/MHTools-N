@@ -105,9 +105,27 @@ namespace MHToolsN.Bridge
         public static object Find(ItemRegistry items, Dictionary<string, object> args)
         {
             Document doc = OpenDocument(items);
+            int limit = BridgeWire.Int(args, "limit", 100, 1, 1000);
+            ModelItemCollection found = BuildSearch(doc, args).FindAll(doc, false);
+            var rows = new List<object>();
+            int total = 0;
+            foreach (ModelItem item in found)
+            {
+                total++;
+                if (rows.Count < limit) rows.Add(Summary(items, item, true));
+            }
+            return Page("items", rows, total, 0, limit, null);
+        }
+
+        /// <summary>
+        /// The search find_items runs - and create_set saves as a search set: category
+        /// (Revit, any language) and/or display-name conditions, within the appended
+        /// files whose name contains "model".
+        /// </summary>
+        internal static Search BuildSearch(Document doc, Dictionary<string, object> args)
+        {
             string category = BridgeWire.Text(args, "category");
             string model = BridgeWire.Text(args, "model");
-            int limit = BridgeWire.Int(args, "limit", 100, 1, 1000);
             var conditions = new List<Dictionary<string, object>>();
             object raw;
             if (args.TryGetValue("conditions", out raw) && raw is System.Collections.IEnumerable && !(raw is string))
@@ -135,16 +153,7 @@ namespace MHToolsN.Bridge
                     .EqualValue(VariantData.FromDisplayString(category.Trim())));
             foreach (var c in conditions)
                 search.SearchConditions.Add(Condition(c));
-
-            ModelItemCollection found = search.FindAll(doc, false);
-            var rows = new List<object>();
-            int total = 0;
-            foreach (ModelItem item in found)
-            {
-                total++;
-                if (rows.Count < limit) rows.Add(Summary(items, item, true));
-            }
-            return Page("items", rows, total, 0, limit, null);
+            return search;
         }
 
         /// <summary>{ category, property, value, match: equals | contains | wildcard | exists | notEquals }, display names.</summary>

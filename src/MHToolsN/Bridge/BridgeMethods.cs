@@ -41,6 +41,20 @@ namespace MHToolsN.Bridge
 
                 // view (ViewMethods)
                 case "capture_view": return () => ViewMethods.Capture(host.Items, args);
+                case "select_items": return () => ViewMethods.Select(host.Items, args);
+                case "zoom_to_items": return () => ViewMethods.Zoom(host.Items, args);
+                case "set_visibility": return () => ViewMethods.Visibility(host.Items, args);
+                case "color_items": return () => ViewMethods.Color(host.Items, args);
+                case "reset_appearance": return () => ViewMethods.ResetAppearance(host.Items, args);
+                case "go_to_viewpoint": return () => ViewMethods.GoToViewpoint(host.Items, args);
+
+                // model changes (ChangeMethods): preview by default, then ChangeGate
+                case "create_set": return () => ChangeMethods.CreateSet(host, args);
+                case "save_viewpoint": return () => ChangeMethods.SaveViewpoint(host, args);
+                case "set_clash_status": return () => ChangeMethods.SetClashStatus(host, args);
+                case "run_clash_tests": return () => ChangeMethods.RunTests(host, args);
+                case "preview_clash_matrix": return () => ChangeMethods.PreviewMatrix(host, args);
+                case "apply_clash_matrix": return () => ChangeMethods.ApplyMatrix(host, args);
 
                 default: return null;
             }

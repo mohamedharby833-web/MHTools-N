@@ -20,18 +20,20 @@
         </Grid.RowDefinitions>
 
         <ui:MhHeader Grid.Row="0" Title="Trusted C#"
-                     Subtitle="Let connected AI apps run generated C# in this Navisworks?" />
+                     Subtitle="Let connected AI apps change this Navisworks model?" />
 
         <StackPanel Grid.Row="1" Margin="20,16,20,16">
+            <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="With this off, an AI app can read the model and change only the view (selection, zoom, hiding, temporary colours). With it on, it may also change the model: save sets and viewpoints, change clash statuses, assignees and comments, run clash tests, build the Clash Matrix - and run C# it writes itself." />
             <TextBlock Style="{DynamicResource MhMutedText}" TextWrapping="Wrap" Margin="0,0,0,14"
-                       Text="The code runs inside Navisworks with your Windows permissions. It can change the model and reach files and the network - it is not sandboxed. Every change is one undoable step, and the model is never saved by the bridge. This stays on until you switch it off, stop the Agent Bridge or close Navisworks." />
+                       Text="C# runs inside Navisworks with your Windows permissions and is not sandboxed. Every change is one undoable step (Ctrl+Z), and the bridge never saves the file. This stays on until you switch it off, stop the Agent Bridge or close Navisworks." />
 
             <Button x:Name="AskButton" Style="{DynamicResource MhPrimaryButton}" HorizontalContentAlignment="Left"
                     Padding="14,8" Click="OnAsk" Height="Auto">
                 <StackPanel>
                     <TextBlock FontWeight="SemiBold" Text="Ask before each change (recommended)" />
                     <TextBlock TextWrapping="Wrap" Opacity="0.9"
-                               Text="Each change is made, shown in the view, and waits for you to keep or undo it." />
+                               Text="Before each change Navisworks tells you what the AI wants to do, and does it only if you say Yes." />
                 </StackPanel>
             </Button>
 
