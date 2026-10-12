@@ -91,9 +91,12 @@ namespace MHToolsN.AgentServer
         public async Task<string> FindItems(CancellationToken cancellationToken,
             string category = "",
             [Description("JSON array of conditions, see the tool description. Empty for none.")] string conditions = "",
-            string model = "", int limit = 100, string sessionId = "")
+            string model = "", int limit = 100,
+            [Description("Full rows (type, level, file...). Default: full up to 50 items, compact (id, name, category, element ID) above.")] bool? details = null,
+            string sessionId = "")
         {
             var args = new JsonObject { ["category"] = category, ["model"] = model, ["limit"] = limit };
+            if (details.HasValue) args["details"] = details.Value;
             if (!string.IsNullOrWhiteSpace(conditions))
             {
                 JsonNode parsed;
@@ -123,9 +126,11 @@ namespace MHToolsN.AgentServer
         [McpServerTool(Name = "get_selection", ReadOnly = true, Idempotent = true),
          Description("The items the user has selected in Navisworks now (total, and up to limit with id, name, category, type, element ID, level, file). " +
                      "Use it when the user says 'this', 'these' or 'what I selected'.")]
-        public async Task<string> Selection(CancellationToken cancellationToken, int limit = 100, string sessionId = "")
+        public async Task<string> Selection(CancellationToken cancellationToken, int limit = 100, bool? details = null, string sessionId = "")
         {
-            return await Call(sessionId, "get_selection", new JsonObject { ["limit"] = limit }, cancellationToken);
+            var args = new JsonObject { ["limit"] = limit };
+            if (details.HasValue) args["details"] = details.Value;
+            return await Call(sessionId, "get_selection", args, cancellationToken);
         }
 
         [McpServerTool(Name = "list_sets", ReadOnly = true, Idempotent = true),
@@ -139,9 +144,11 @@ namespace MHToolsN.AgentServer
 
         [McpServerTool(Name = "get_set_items", ReadOnly = true, Idempotent = true),
          Description("The items a saved set selects (a search set is run now): total, and up to limit with ids and details. set: its path from list_sets, or its name when unique.")]
-        public async Task<string> SetItems(string set, CancellationToken cancellationToken, int limit = 100, string sessionId = "")
+        public async Task<string> SetItems(string set, CancellationToken cancellationToken, int limit = 100, bool? details = null, string sessionId = "")
         {
-            return await Call(sessionId, "get_set_items", new JsonObject { ["set"] = set, ["limit"] = limit }, cancellationToken);
+            var args = new JsonObject { ["set"] = set, ["limit"] = limit };
+            if (details.HasValue) args["details"] = details.Value;
+            return await Call(sessionId, "get_set_items", args, cancellationToken);
         }
 
         [McpServerTool(Name = "list_viewpoints", ReadOnly = true, Idempotent = true),

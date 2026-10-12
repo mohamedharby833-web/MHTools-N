@@ -241,7 +241,7 @@ namespace MHToolsN.Bridge
                 }
             }
             result["done"] = true;
-            result["seconds"] = (int)(DateTime.UtcNow - started).TotalSeconds;
+            result["seconds"] = Math.Round((DateTime.UtcNow - started).TotalSeconds, 1);
             result["next"] = "get_clash_summary or list_clash_tests show the new results.";
             return result;
         }

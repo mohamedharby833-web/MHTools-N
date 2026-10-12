@@ -351,15 +351,17 @@ namespace MHToolsN.Services
         /// </summary>
         internal static string ValueText(VariantData v)
         {
+            // The clean-up goes on every text form: Revit's level references come through
+            // as something other than a display string (seen in 2.3.0 - still "Level \"X\", #id").
             if (v.IsDisplayString) return CleanReference(v.ToDisplayString());
-            if (v.IsIdentifierString) return v.ToIdentifierString();
+            if (v.IsIdentifierString) return CleanReference(v.ToIdentifierString());
             if (v.IsInt32) return v.ToInt32().ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (v.IsNamedConstant) return v.ToNamedConstant().DisplayName;
+            if (v.IsNamedConstant) return CleanReference(v.ToNamedConstant().DisplayName);
             if (v.IsBoolean) return v.ToBoolean() ? "Yes" : "No";
             if (v.IsAnyDouble) return v.ToAnyDouble().ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
             if (v.IsDateTime) return v.ToDateTime().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             if (v.IsNone) return null;
-            return v.ToString();
+            return CleanReference(v.ToString());
         }
 
         // Revit exports a reference to another element as its kind, name and id:

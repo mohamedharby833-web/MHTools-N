@@ -30,6 +30,25 @@ namespace MHToolsN.Bridge
             return doc;
         }
 
+        /// <summary>
+        /// Lists longer than this come back compact unless details=true: a full row is
+        /// about 360 characters, and 146 of them (the ducts of one model) were more than
+        /// Claude Code takes from one tool call.
+        /// </summary>
+        internal const int DetailedUpTo = 50;
+
+        /// <summary>A short row for long lists: id, name, Revit category and element ID.</summary>
+        public static Dictionary<string, object> Compact(ItemRegistry items, ModelItem item)
+        {
+            var row = new Dictionary<string, object> { { "id", items.Id(item) }, { "name", item.DisplayName } };
+            string category = Safe(() => ClashResultsReader.Property(item, p => p.FindPropertyByName(ElementCategoryInternal, CategoryPropertyInternal)));
+            if (category != null) row["category"] = category;
+            string elementId = Safe(() => ClashResultsReader.Property(item, p => p.FindPropertyByDisplayName("Element ID", "Value"))
+                                          ?? ClashResultsReader.Property(item, p => p.FindPropertyByDisplayName("Element", "Id")));
+            if (elementId != null) row["elementId"] = elementId;
+            return row;
+        }
+
         /// <summary>What an agent needs to recognise an item: id, name, node type, Revit category.</summary>
         public static Dictionary<string, object> Summary(ItemRegistry items, ModelItem item, bool details = false)
         {
@@ -106,13 +125,14 @@ namespace MHToolsN.Bridge
         {
             Document doc = OpenDocument(items);
             int limit = BridgeWire.Int(args, "limit", 100, 1, 1000);
+            bool details = BridgeWire.Bool(args, "details", limit <= DetailedUpTo);
             ModelItemCollection found = BuildSearch(doc, args).FindAll(doc, false);
             var rows = new List<object>();
             int total = 0;
             foreach (ModelItem item in found)
             {
                 total++;
-                if (rows.Count < limit) rows.Add(Summary(items, item, true));
+                if (rows.Count < limit) rows.Add(details ? Summary(items, item, true) : Compact(items, item));
             }
             return Page("items", rows, total, 0, limit, null);
         }
@@ -229,12 +249,13 @@ namespace MHToolsN.Bridge
         {
             Document doc = OpenDocument(items);
             int limit = BridgeWire.Int(args, "limit", 100, 1, 1000);
+            bool details = BridgeWire.Bool(args, "details", limit <= DetailedUpTo);
             var rows = new List<object>();
             int total = 0;
             foreach (ModelItem item in doc.CurrentSelection.SelectedItems)
             {
                 total++;
-                if (rows.Count < limit) rows.Add(Summary(items, item, true));
+                if (rows.Count < limit) rows.Add(details ? Summary(items, item, true) : Compact(items, item));
             }
             return Page("items", rows, total, 0, limit, null);
         }
@@ -283,6 +304,7 @@ namespace MHToolsN.Bridge
             Document doc = OpenDocument(items);
             string name = BridgeWire.Text(args, "set");
             int limit = BridgeWire.Int(args, "limit", 100, 1, 1000);
+            bool details = BridgeWire.Bool(args, "details", limit <= DetailedUpTo);
             SelectionSet set = FindSet(doc.SelectionSets.RootItem, "", name);
             if (set == null) throw new BridgeException("NOT_FOUND", "No saved set '" + name + "'. Use list_sets for the names or paths (Folder/Name).");
 
@@ -291,7 +313,7 @@ namespace MHToolsN.Bridge
             foreach (ModelItem item in set.GetSelectedItems(doc))
             {
                 total++;
-                if (rows.Count < limit) rows.Add(Summary(items, item, true));
+                if (rows.Count < limit) rows.Add(details ? Summary(items, item, true) : Compact(items, item));
             }
             return Page("items", rows, total, 0, limit, new Dictionary<string, object> { { "set", set.DisplayName }, { "kind", set.HasSearch ? "search" : "selection" } });
         }
