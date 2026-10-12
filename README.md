@@ -396,3 +396,10 @@ src/MHToolsN/
   UI/
     ClashMatrixWindow.xaml(.cs)       the dialog (MH Tools skin)
 ```
+
+## Licence
+
+MIT - see [LICENSE](LICENSE). The installer also places `LICENSE.txt` and
+`THIRD-PARTY-NOTICES.txt` (the .NET runtime, Microsoft.Extensions and the
+ModelContextProtocol SDK inside the bridge server) in the installed bundle.
+Navisworks and Autodesk are trademarks of Autodesk, Inc.

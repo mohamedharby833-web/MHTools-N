@@ -157,6 +157,12 @@ Set-Content (Join-Path $bundleDir 'PackageContents.xml') -Value $manifest -Encod
 
 Copy-Item (Join-Path $installerDir 'readme.txt') (Join-Path $bundleDir 'Contents\readme.txt')
 
+# The licence (MIT, as MHTools-R) and the third-party notices go with the files.
+# install\THIRD-PARTY-NOTICES.txt lists what the server exe contains - update it
+# when a package is added to src\MHToolsN.AgentServer.
+Copy-Item (Join-Path $rootDir 'LICENSE') (Join-Path $bundleDir 'Contents\LICENSE.txt')
+Copy-Item (Join-Path $installerDir 'THIRD-PARTY-NOTICES.txt') (Join-Path $bundleDir 'Contents\THIRD-PARTY-NOTICES.txt')
+
 # ------------------------------------------------------ Agent Bridge server --
 # The MCP server AI apps start: Contents\Server\MHTools-N.AgentServer.exe, one
 # file for every Navisworks year. Self-contained, so no .NET has to be installed.
