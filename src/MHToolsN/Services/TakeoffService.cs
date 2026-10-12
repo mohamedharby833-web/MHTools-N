@@ -272,17 +272,35 @@ namespace MHToolsN.Services
 
             using (NavisworksCommand cmd = tx.Connection.CreateCommand())
             {
-                cmd.Transaction = tx;
+                // No cmd.Transaction = tx: NavisworksCommand throws NotImplementedException
+                // on it (seen in 2027). A command made from the open transaction's connection
+                // runs inside that transaction anyway.
                 cmd.CommandText = "INSERT INTO " + table.DbTableName + " (" + parentColumn + ", " + nameColumn + ") VALUES (@parent, @name)";
                 cmd.Parameters.AddWithValue("@parent", parent.HasValue ? (object)parent.Value : DBNull.Value);
                 cmd.Parameters.AddWithValue("@name", name);
                 cmd.ExecuteNonQuery();
             }
-            using (NavisworksCommand cmd = tx.Connection.CreateCommand())
+            id = 0;
+            try
             {
-                cmd.Transaction = tx;
-                cmd.CommandText = "SELECT last_insert_rowid()";
-                id = Convert.ToInt64(cmd.ExecuteScalar());
+                using (NavisworksCommand cmd = tx.Connection.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT last_insert_rowid()";
+                    id = Convert.ToInt64(cmd.ExecuteScalar());
+                }
+            }
+            catch (Exception ex)
+            {
+                Watchdog.Log("Quantification: last_insert_rowid() not available (" + ex.Message + "); using MAX(row id).");
+            }
+            if (id <= 0)
+            {
+                // Inside our own open transaction, the newest row of the table is the one just added.
+                using (NavisworksCommand cmd = tx.Connection.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT MAX(" + table.RowId.Name + ") FROM " + table.DbTableName;
+                    id = Convert.ToInt64(cmd.ExecuteScalar());
+                }
             }
             rows[key] = id;
             created++;
